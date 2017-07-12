@@ -74,16 +74,22 @@ func (fr *FrameReader) Read() (f Frame, err error) {
 }
 
 type FrameWriter struct {
-	Writer io.Writer
+	Writer  io.Writer
+	Channel uint8
+	Class   uint8
 }
 
 func NewFrameWriter(w io.Writer) *FrameWriter {
 	return &FrameWriter{Writer: w}
 }
 
-func (fw *FrameWriter) Write(class, channel uint8, payload []byte) (n int, err error) {
+func (fw *FrameWriter) WriteUnPackFrame(class, channel uint8, payload []byte) (n int, err error) {
 	frame := NewFrame(class, channel, payload)
 	return fw.Writer.Write(frame)
+}
+
+func (fw *FrameWriter) Write(payload []byte) (n int, err error) {
+	return fw.WriteUnPackFrame(fw.Class, fw.Channel, payload)
 }
 
 func (fw *FrameWriter) WriteFrame(f Frame) (n int, err error) {
