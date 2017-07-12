@@ -43,10 +43,16 @@ func (this *Client) NewChannelId() uint8 {
 	sort.Slice(this.channelIds, func(i, j int) bool {
 		return this.channelIds[i] - this.channelIds[j] < 0
 	})
-	for i, id := range this.channelIds {
-		if i != int(id) {
-			this.channelIds = append(this.channelIds, id - 1)
-			return id - 1
+	for i := uint8(1); i < 255; i++ {
+		used := false
+		for _, id := range this.channelIds {
+			if id == i {
+				used = true
+			}
+		}
+		if !used {
+			this.channelIds = append(this.channelIds, i)
+			return i
 		}
 	}
 	this.channelIds = append(this.channelIds, 0)

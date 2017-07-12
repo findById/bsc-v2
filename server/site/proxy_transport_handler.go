@@ -32,18 +32,19 @@ func (this *SiteTransportHandler) Start() {
 	for now := int64(0); (now - beginTime) < 10; now = time.Now().Unix() {
 		// 查找可用连接通道 (临时解决方案)
 		for _, conn := range this.cm.ConnMap {
-			if conn.ChannelIdSize() < 200 {
+			if conn.ChannelIdSize() < 10 {
 				this.pc.ChannelId = conn.NewChannelId()
 				this.c = conn // 复用当前可用数据通道
 				this.pcm.Add(this.pc)
+				log.Println("new channel id", this.pc.ChannelId)
 				break a
 			} else {
 				// 告诉客户端打开新的连接接收数据
 				data := core.NewFrame(core.NEW_CO, this.pc.ChannelId, core.NO_PAYLOAD)
-				this.c.OutChan <- data
+				conn.OutChan <- data
 
 				// 等待客户端连接
-				time.Sleep(100)
+				time.Sleep(5 * time.Second)
 			}
 		}
 	}
@@ -63,7 +64,7 @@ func (this *SiteTransportHandler) ReadPacket() {
 			this.pc.Close()
 			return
 		}
-		log.Println("proxy read data", buf[:n])
+		log.Println("proxy read data")
 
 		// 将数据处理权交给客户端连接处理
 		data := core.NewFrame(core.DATA, this.pc.ChannelId, buf[:n])
@@ -75,7 +76,7 @@ func (this *SiteTransportHandler) WritePacket() {
 	for this.c != nil && !this.c.IsClosed && this.pc != nil && !this.pc.IsClosed {
 		select {
 		case data := <-this.pc.OutChan:
-			log.Println("proxy write data", data)
+			log.Println("proxy write data")
 			this.pc.Conn.Write(data)
 		}
 	}

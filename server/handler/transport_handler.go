@@ -36,7 +36,7 @@ func (this *TransportHandler) ReadPacket() {
 			this.client.Close()
 			return
 		}
-		log.Println("client read data", core.RN[int(f.Class())], f)
+		log.Println("client read data", f.Channel(), core.RN[int(f.Class())])
 		switch f.Class() {
 		case core.AUTH:
 			// 验证客户端后添加到连接库
@@ -68,7 +68,7 @@ func (this *TransportHandler) WritePacket() {
 	for this.client != nil && !this.client.IsClosed {
 		select {
 		case data := <-this.client.OutChan:
-			log.Println("client write data", data)
+			log.Println("client write data", data.Channel(), core.RN[int(data.Class())])
 			fw.WriteFrame(data)
 		}
 	}
