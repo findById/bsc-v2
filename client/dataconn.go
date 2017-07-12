@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"sync"
 	"time"
 
 	bsc "github.com/findById/bsc-v2/core"
@@ -15,6 +16,7 @@ type DataConn struct {
 	conn       *net.TCPConn
 	targets    map[uint8]*net.TCPConn // channel->target
 	exit       chan (int)
+	lock       *sync.RWMutex
 }
 
 func NewDataConn(serverAddr, targetAddr *net.TCPAddr, exit chan (int)) *DataConn {
@@ -23,10 +25,13 @@ func NewDataConn(serverAddr, targetAddr *net.TCPAddr, exit chan (int)) *DataConn
 		serverAddr: serverAddr,
 		exit:       exit,
 		targets:    make(map[uint8]*net.TCPConn),
+		lock:       &sync.RWMutex{},
 	}
 }
 
 func (d *DataConn) closeChannel(ch uint8) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 	log.Println("close channel", ch)
 	if conn, ok := d.targets[ch]; ok {
 		delete(d.targets, ch)
@@ -36,13 +41,15 @@ func (d *DataConn) closeChannel(ch uint8) {
 }
 
 func (d *DataConn) close() {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 	log.Println("close data conn", d.conn.LocalAddr())
 	d.conn.Close()
 	for ch, _ := range d.targets {
 		d.closeChannel(ch)
 	}
 }
-func (d *DataConn) do() {
+func (d *DataConn) do(ack bool) {
 	defer func() {
 		d.exit <- -1
 	}()
@@ -53,6 +60,7 @@ func (d *DataConn) do() {
 		return
 	}
 	d.conn = conn
+	bsc.NewFrameWriter(conn).WriteUnPackFrame(bsc.NEW_CO_ACK, 0, bsc.NO_PAYLOAD)
 	reader := bsc.NewFrameReader(conn)
 	for {
 		conn.SetReadDeadline(time.Now().Add(time.Second * 10))
@@ -72,6 +80,7 @@ func (d *DataConn) do() {
 						d.close()
 						log.Println(err)
 						log.Println("close connection")
+						break
 					}
 				}
 			} else {
@@ -89,7 +98,7 @@ func (d *DataConn) do() {
 			d.close()
 			break
 		} else if frame.Class() == bsc.NEW_CO {
-			go NewDataConn(d.serverAddr, d.targetAddr, d.exit).do()
+			go NewDataConn(d.serverAddr, d.targetAddr, d.exit).do(true)
 		} else {
 			log.Println("not supported class", frame.Class())
 		}
@@ -113,5 +122,7 @@ func (d *DataConn) newChannel(ch uint8) {
 }
 
 func (d *DataConn) putTargets(ch uint8, conn *net.TCPConn) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 	d.targets[ch] = conn
 }

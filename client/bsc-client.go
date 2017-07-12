@@ -29,7 +29,7 @@ func main() {
 	}
 	aliveConn := 0
 	exit := make(chan (int), 10)
-	go NewDataConn(serverAddr, targetAddr, exit).do()
+	go NewDataConn(serverAddr, targetAddr, exit).do(false)
 	for {
 		aliveConn += <-exit
 		if aliveConn < 1 {
