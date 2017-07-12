@@ -68,7 +68,7 @@ func (d *DataConn) do(ack bool) {
 		log.Println(err)
 		return
 	}
-	conn.SetNoDelay(true)
+	//conn.SetNoDelay(true)
 	fw := bsc.NewFrameWriter(conn)
 	fw.WriteUnPackFrame(bsc.AUTH, 0, []byte("hello bsc"))
 	if ack {
@@ -128,7 +128,7 @@ func (d *DataConn) newChannel(ch uint8, payload []byte) {
 		log.Println(err)
 		d.closeChannel(ch)
 	}
-	tConn.SetNoDelay(true)
+	//tConn.SetNoDelay(true)
 	d.putTargets(ch, tConn)
 	tConn.Write(payload)
 	go func() {

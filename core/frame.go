@@ -99,7 +99,8 @@ func (fw *FrameWriter) WriteUnPackFrame(class, channel uint8, payload []byte) (n
 }
 
 func (fw *FrameWriter) Write(payload []byte) (n int, err error) {
-	return fw.WriteUnPackFrame(fw.Class, fw.Channel, payload)
+	_, err = fw.WriteUnPackFrame(fw.Class, fw.Channel, payload)
+	return len(payload), err
 }
 
 func (fw *FrameWriter) WriteFrame(f Frame) (n int, err error) {
