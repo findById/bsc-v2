@@ -46,7 +46,7 @@ type FrameReader struct {
 func NewFrameReader(r io.Reader) *FrameReader {
 	return &FrameReader{Reader: r}
 }
-func (fr *FrameReader) read() (f Frame, err error) {
+func (fr *FrameReader) Read() (f Frame, err error) {
 	f = make(Frame, 6)
 	_, err = io.ReadFull(fr.Reader, f)
 	if err != nil {
@@ -76,11 +76,11 @@ func NewFrameWriter(w io.Writer) *FrameWriter {
 	return &FrameWriter{Writer: w}
 }
 
-func (fw *FrameWriter) write(class, channel uint8, payload []byte) (n int, err error) {
+func (fw *FrameWriter) Write(class, channel uint8, payload []byte) (n int, err error) {
 	frame := NewFrame(class, channel, payload)
 	return fw.Writer.Write(frame)
 }
 
-func (fw *FrameWriter) writeFrame(f Frame) (n int, err error) {
+func (fw *FrameWriter) WriteFrame(f Frame) (n int, err error) {
 	return fw.Writer.Write(f)
 }
