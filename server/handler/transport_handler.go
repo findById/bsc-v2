@@ -28,7 +28,7 @@ func (this *TransportHandler) Start() {
 }
 
 func (this *TransportHandler) ReadPacket() {
-	fr := core.NewFrameReader(this.client.Conn[this.client.Id])
+	fr := core.NewFrameReader(this.client.Conn)
 	for this.client != nil && !this.client.IsClosed {
 		f, err := fr.Read()
 		if err != nil {
@@ -38,25 +38,18 @@ func (this *TransportHandler) ReadPacket() {
 		switch f.Class() {
 		case core.AUTH:
 			// 验证客户端后添加到连接库
-			client := client.NewClient(this.client.Conn[this.client.Id])
-			this.cm.AddClient(client)
+			this.client.IsAuthed = true
+			this.cm.AddClient(this.client)
 
 			// 客户端认证回应
-			for _, bean := range this.client.Conn {
-				if bean.ConsistsChannelId(0) {
-					bean.OutChan <- core.NewFrame(core.AUTH_ACK, 0, 0)
-				}
-			}
+			this.client.OutChan <- core.NewFrame(core.AUTH_ACK, 0, []byte{0})
 		case core.DATA:
 			cId := f.Channel()
 			// 查找是否存在当前channelId的连接，如该没有告诉客户端关闭数据通道
 			c := this.pcm.GetClientByChannelId(cId)
 			if c == nil {
-				for _, bean := range this.client.Conn {
-					if bean.ConsistsChannelId(cId) {
-						bean.OutChan <- core.NewFrame(core.AUTH_ACK, cId, core.NO_PAYLOAD)
-					}
-				}
+				// 通知客户端关闭当前数据通道
+				this.client.OutChan <- core.NewFrame(core.CLOSE_CH, cId, core.NO_PAYLOAD)
 				continue
 			}
 			// 把数据处理权交给对应channelId的用户连接
@@ -68,7 +61,7 @@ func (this *TransportHandler) ReadPacket() {
 }
 
 func (this *TransportHandler) WritePacket() {
-	fw := core.NewFrameWriter(this.client.Conn[this.client.Id])
+	fw := core.NewFrameWriter(this.client.Conn)
 	for this.client != nil && !this.client.IsClosed {
 		select {
 		case data := <-this.client.OutChan:
