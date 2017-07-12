@@ -14,15 +14,15 @@ const (
 
 type Frame []byte
 
-func (f Frame) len() uint32 {
+func (f Frame) Size() uint32 {
 	return binary.BigEndian.Uint32(f)
 }
 
-func (f Frame) class() uint8 {
+func (f Frame) Class() uint8 {
 	return f[4]
 }
 
-func (f Frame) channel() uint8 {
+func (f Frame) Channel() uint8 {
 	return f[5]
 }
 
@@ -52,7 +52,7 @@ func (fr *FrameReader) Read() (f Frame, err error) {
 	if err != nil {
 		return
 	}
-	payloadSize := f.len() - 6
+	payloadSize := f.Size() - 6
 	if payloadSize > 0 {
 		payload := make([]byte, payloadSize)
 		_, err = io.ReadFull(fr.Reader, payload)
@@ -61,7 +61,7 @@ func (fr *FrameReader) Read() (f Frame, err error) {
 		}
 		xf := make(Frame, len(f))
 		copy(xf, f)
-		f = make(Frame, xf.len())
+		f = make(Frame, xf.Size())
 		copy(f, xf)
 		copy(f[6:], payload)
 	}
