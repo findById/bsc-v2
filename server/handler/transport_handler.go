@@ -5,6 +5,7 @@ import (
 	"net"
 	"bsc-v2/core"
 	"bsc-v2/server/site"
+	"log"
 )
 
 type TransportHandler struct {
@@ -35,6 +36,7 @@ func (this *TransportHandler) ReadPacket() {
 			this.client.Close()
 			return
 		}
+		log.Println(f)
 		switch f.Class() {
 		case core.AUTH:
 			// 验证客户端后添加到连接库
@@ -42,6 +44,7 @@ func (this *TransportHandler) ReadPacket() {
 			this.cm.AddClient(this.client)
 
 			// 客户端认证回应
+			log.Println("auth ack")
 			this.client.OutChan <- core.NewFrame(core.AUTH_ACK, 0, []byte{0})
 		case core.DATA:
 			cId := f.Channel()
@@ -49,6 +52,7 @@ func (this *TransportHandler) ReadPacket() {
 			c := this.pcm.GetClientByChannelId(cId)
 			if c == nil {
 				// 通知客户端关闭当前数据通道
+				log.Println("not found channel id", cId)
 				this.client.OutChan <- core.NewFrame(core.CLOSE_CH, cId, core.NO_PAYLOAD)
 				continue
 			}

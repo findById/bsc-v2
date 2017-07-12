@@ -4,8 +4,8 @@ import (
 	"bsc-v2/server/client"
 	"net"
 	"log"
-	"bsc-v2/server/site"
 	"bsc-v2/server/handler"
+	"bsc-v2/server/site"
 )
 
 type ProxyServer struct {
@@ -69,6 +69,7 @@ func (this *ProxyServer) listenDataPort(addr string) (err error) {
 处理客户端发起的连接 (数据传输)
  */
 func (this *ProxyServer) handleDataConnection(conn *net.TCPConn) {
+	log.Println("handle data conn", conn.RemoteAddr().String())
 	h := handler.NewHandler(conn, this.cm, this.pcm)
 	h.Start()
 }
@@ -101,6 +102,7 @@ func (this *ProxyServer) listenUserPort(addr string) (err error) {
 处理用户端发起的请求
  */
 func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
+	log.Println("handle user conn", conn.RemoteAddr().String())
 	h := site.NewSiteHandler(conn, this.pcm, this.cm)
 	h.Start()
 }

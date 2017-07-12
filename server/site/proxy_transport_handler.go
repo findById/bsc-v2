@@ -5,6 +5,7 @@ import (
 	"net"
 	"bsc-v2/core"
 	"time"
+	"log"
 )
 
 type SiteTransportHandler struct {
@@ -34,10 +35,11 @@ func (this *SiteTransportHandler) Start() {
 			if conn.ChannelIdSize() < 200 {
 				this.pc.ChannelId = conn.NewChannelId()
 				this.c = conn // 复用当前可用数据通道
+				this.pcm.Add(this.pc)
 				break a
 			} else {
 				// 告诉客户端打开新的连接接收数据
-				data := core.NewFrame(core.NEW_CO, this.pc.ChannelId, []byte(""))
+				data := core.NewFrame(core.NEW_CO, this.pc.ChannelId, core.NO_PAYLOAD)
 				this.c.OutChan <- data
 
 				// 等待客户端连接
@@ -55,11 +57,13 @@ func (this *SiteTransportHandler) ReadPacket() {
 	for this.c != nil && !this.c.IsClosed && this.pc != nil && !this.pc.IsClosed {
 		n, err := this.pc.Conn.Read(buf)
 		if err != nil {
+			log.Println("proxy read error", err)
 			data := core.NewFrame(core.CLOSE_CH, this.pc.ChannelId, core.NO_PAYLOAD)
 			this.c.OutChan <- data
 			this.pc.Close()
 			return
 		}
+		log.Println("proxy read data", buf[:n])
 
 		// 将数据处理权交给客户端连接处理
 		data := core.NewFrame(core.DATA, this.pc.ChannelId, buf[:n])
@@ -71,6 +75,7 @@ func (this *SiteTransportHandler) WritePacket() {
 	for this.c != nil && !this.c.IsClosed && this.pc != nil && !this.pc.IsClosed {
 		select {
 		case data := <-this.pc.OutChan:
+			log.Println("proxy write data", data)
 			this.pc.Conn.Write(data)
 		}
 	}
