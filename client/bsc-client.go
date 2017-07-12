@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"net"
+	"time"
 )
 
 var (
@@ -27,9 +28,16 @@ func main() {
 		log.Println(err)
 		return
 	}
+	log.Println("server addr:", serverAddr.String())
+	log.Println("target addr:", targetAddr.String())
 	aliveConn := 0
 	exit := make(chan (int), 10)
 	go NewDataConn(serverAddr, targetAddr, exit).do(false)
+	go func() {
+		for _ = range time.Tick(time.Second * 15) {
+			log.Println("alive conns:", exit)
+		}
+	}()
 	for {
 		aliveConn += <-exit
 		if aliveConn < 1 {

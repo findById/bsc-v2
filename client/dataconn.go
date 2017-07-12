@@ -15,8 +15,10 @@ type DataConn struct {
 	serverAddr *net.TCPAddr
 	conn       *net.TCPConn
 	targets    map[uint8]*net.TCPConn // channel->target
+	reader     *bsc.FrameReader
 	exit       chan (int)
 	lock       *sync.RWMutex
+	//	rwLock     *sync.RWMutex
 }
 
 func NewDataConn(serverAddr, targetAddr *net.TCPAddr, exit chan (int)) *DataConn {
@@ -26,6 +28,7 @@ func NewDataConn(serverAddr, targetAddr *net.TCPAddr, exit chan (int)) *DataConn
 		exit:       exit,
 		targets:    make(map[uint8]*net.TCPConn),
 		lock:       &sync.RWMutex{},
+		//		rwLock:     &sync.RWMutex{},
 	}
 }
 
@@ -49,6 +52,12 @@ func (d *DataConn) close() {
 		d.closeChannel(ch)
 	}
 }
+
+func (d *DataConn) read() (f bsc.Frame, err error) {
+	d.conn.SetReadDeadline(time.Now().Add(time.Second * 10))
+	return d.reader.Read()
+}
+
 func (d *DataConn) do(ack bool) {
 	defer func() {
 		d.exit <- -1
@@ -59,12 +68,16 @@ func (d *DataConn) do(ack bool) {
 		log.Println(err)
 		return
 	}
+	fw := bsc.NewFrameWriter(conn)
+	fw.WriteUnPackFrame(bsc.AUTH, 0, []byte("hello bsc"))
+	if ack {
+		fw.WriteUnPackFrame(bsc.NEW_CO_ACK, 0, bsc.NO_PAYLOAD)
+	}
 	d.conn = conn
-	bsc.NewFrameWriter(conn).WriteUnPackFrame(bsc.NEW_CO_ACK, 0, bsc.NO_PAYLOAD)
-	reader := bsc.NewFrameReader(conn)
+	d.reader = bsc.NewFrameReader(conn)
 	for {
 		conn.SetReadDeadline(time.Now().Add(time.Second * 10))
-		frame, err := reader.Read()
+		frame, err := d.read()
 		if err != nil {
 			log.Println(err)
 			break
