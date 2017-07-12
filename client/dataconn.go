@@ -5,7 +5,7 @@ import (
 	"log"
 	"net"
 	"sync"
-	"time"
+	//	"time"
 
 	bsc "github.com/findById/bsc-v2/core"
 )
@@ -54,7 +54,7 @@ func (d *DataConn) close() {
 }
 
 func (d *DataConn) read() (f bsc.Frame, err error) {
-	d.conn.SetReadDeadline(time.Now().Add(time.Second * 10))
+	//d.conn.SetReadDeadline(time.Now().Add(time.Second * 10))
 	return d.reader.Read()
 }
 
@@ -68,6 +68,7 @@ func (d *DataConn) do(ack bool) {
 		log.Println(err)
 		return
 	}
+	conn.SetNoDelay(true)
 	fw := bsc.NewFrameWriter(conn)
 	fw.WriteUnPackFrame(bsc.AUTH, 0, []byte("hello bsc"))
 	if ack {
@@ -76,12 +77,12 @@ func (d *DataConn) do(ack bool) {
 	d.conn = conn
 	d.reader = bsc.NewFrameReader(conn)
 	for {
-		conn.SetReadDeadline(time.Now().Add(time.Second * 10))
 		frame, err := d.read()
 		if err != nil {
 			log.Println(err)
 			break
 		}
+		log.Printf("new frame size: %d ,class: %s, channel:%d\n", frame.Size(), bsc.RN[int(frame.Class())], frame.Channel())
 		if frame.Class() == bsc.DATA {
 			if writer, ok := d.targets[frame.Channel()]; ok {
 				_, err := writer.Write(frame.Payload())
@@ -97,7 +98,7 @@ func (d *DataConn) do(ack bool) {
 					}
 				}
 			} else {
-				go d.newChannel(frame.Channel())
+				go d.newChannel(frame.Channel(), frame.Payload())
 			}
 		} else if frame.Class() == bsc.AUTH_ACK {
 			if frame.Payload()[0] != 0 {
@@ -106,8 +107,10 @@ func (d *DataConn) do(ack bool) {
 				break
 			}
 		} else if frame.Class() == bsc.CLOSE_CH {
+			log.Println("server request close channel", frame.Channel())
 			d.closeChannel(frame.Channel())
 		} else if frame.Class() == bsc.CLOSE_CO {
+			log.Println("server request close connection")
 			d.close()
 			break
 		} else if frame.Class() == bsc.NEW_CO {
@@ -118,20 +121,25 @@ func (d *DataConn) do(ack bool) {
 	}
 }
 
-func (d *DataConn) newChannel(ch uint8) {
+func (d *DataConn) newChannel(ch uint8, payload []byte) {
 	log.Println("new channel", ch)
 	tConn, err := net.DialTCP("tcp", nil, d.targetAddr)
 	if err != nil {
 		log.Println(err)
 		d.closeChannel(ch)
 	}
+	tConn.SetNoDelay(true)
 	d.putTargets(ch, tConn)
-	go io.Copy(
-		&bsc.FrameWriter{
-			Channel: ch,
-			Class:   bsc.DATA,
-			Writer:  d.conn},
-		tConn)
+	tConn.Write(payload)
+	go func() {
+		n, err := io.Copy(
+			&bsc.FrameWriter{
+				Channel: ch,
+				Class:   bsc.DATA,
+				Writer:  d.conn},
+			tConn)
+		log.Println("copy ", n, "bytes", err)
+	}()
 }
 
 func (d *DataConn) putTargets(ch uint8, conn *net.TCPConn) {

@@ -5,6 +5,16 @@ import (
 	"io"
 )
 
+var RN = map[int]string{
+	0: "数据",
+	1: "打开新连接",
+	2: "新链接ACK",
+	3: "关闭通道",
+	4: "关闭链接",
+	5: "请求认证",
+	6: "认证ACK",
+}
+
 const (
 	DATA       = 0 //数据 		 [L0,L1,L2,L3,0,CHANNEL_ID,DATA....]
 	NEW_CO     = 1 //打开新连接	 [L0,L1,L2,L3,1,0]

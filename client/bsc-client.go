@@ -35,7 +35,7 @@ func main() {
 	go NewDataConn(serverAddr, targetAddr, exit).do(false)
 	go func() {
 		for _ = range time.Tick(time.Second * 15) {
-			log.Println("alive conns:", exit)
+			log.Println("alive conns:", aliveConn)
 		}
 	}()
 	for {
