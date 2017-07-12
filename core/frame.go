@@ -15,6 +15,8 @@ const (
 	AUTH_ACK   = 6 //认证ACK 		 [L0,L1,L2,L3,6,0,REL] REL: 0 success,1 faild
 )
 
+var NO_PAYLOAD = []byte{}
+
 type Frame []byte
 
 func (f Frame) Size() uint32 {
