@@ -9,6 +9,7 @@ const (
 	DATA  = 0
 	BEGIN = 1
 	DONE  = 2
+	AUTH  = 3
 )
 
 type Frame []byte
