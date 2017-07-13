@@ -23,6 +23,8 @@ const (
 	CLOSE_CO   = 4 //关闭链接		 [L0,L1,L2,L3,4,0]
 	AUTH       = 5 //请求认证		 [L0,L1,L2,L3,5,0,DATA....] DATA:MD5(USER:PASSWD)
 	AUTH_ACK   = 6 //认证ACK 		 [L0,L1,L2,L3,6,0,REL] REL: 0 success,1 faild
+	PING       = 7 //PING         [L0,L1,L2,L3,7,0]
+	PONG       = 8 //PONG         [L0,L1,L2,L3,8,0]
 )
 
 var NO_PAYLOAD = []byte{}
