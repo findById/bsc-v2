@@ -32,7 +32,6 @@ func (this *SiteTransportHandler) ReadPacket() {
 		n, err := this.pc.Conn.Read(buf)
 		if err != nil {
 			//log.Println("proxy read data error", err)
-			this.pc.Close()
 			this.pcm.RemoveClient(this.pc.Id)
 
 			// 通知客户端关闭数据通道
@@ -61,7 +60,7 @@ func (this *SiteTransportHandler) WritePacket() {
 	for this.c != nil && !this.c.IsClosed && this.pc != nil && !this.pc.IsClosed {
 		select {
 		case data := <-this.pc.OutChan:
-			//log.Println("proxy write data")
+		//log.Println("proxy write data")
 			this.pc.Conn.Write(data)
 		}
 	}
