@@ -5,15 +5,15 @@ import (
 )
 
 type ProxyClient struct {
-	Id        string
-	Conn      *net.TCPConn
+	Id        string       // 用户端连接Id
+	Conn      *net.TCPConn // 用户端连接
 
-	ClientId  string
+	ClientId  string       // 对应用户端的客户端连接Id
 
 	InChan    chan ([]byte)
 	OutChan   chan ([]byte)
 
-	ChannelId uint8
+	ChannelId uint8        // 用户复用客户端连接的通道Id
 
 	IsClosed  bool
 }

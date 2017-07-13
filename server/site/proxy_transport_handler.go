@@ -7,11 +7,10 @@ import (
 )
 
 type SiteTransportHandler struct {
-	c       *client.Client // 代理客户端
-	pc      *ProxyClient   // 用户访问端
-	cm      *client.ClientManager
-	pcm     *ProxyClientManager
-	OutChan chan (core.Frame)
+	c   *client.Client        // 代理客户端
+	pc  *ProxyClient          // 用户访问端
+	cm  *client.ClientManager // 客户端连接管理
+	pcm *ProxyClientManager   // 用户端连接管理
 }
 
 func NewSiteHandler(c *client.Client, cm *client.ClientManager, pc *ProxyClient, pcm *ProxyClientManager) *SiteTransportHandler {
@@ -36,10 +35,17 @@ func (this *SiteTransportHandler) ReadPacket() {
 			log.Println("proxy read error", err)
 			this.pc.Close()
 			this.pcm.RemoveClient(this.pc.Id)
+
+			// 通知客户端关闭数据通道
+			data := core.NewFrame(core.CLOSE_CH, this.pc.ChannelId, core.NO_PAYLOAD)
+			this.c.OutChan <- data
+			this.c.RemoveChannelId(this.pc.ChannelId)
 			// 通知客户端关闭连接
-			if len(this.cm.CloneMap()) > 3 {
-				data := core.NewFrame(core.CLOSE_CO, this.pc.ChannelId, core.NO_PAYLOAD)
-				this.c.OutChan <- data
+			if len(this.cm.CloneMap()) > 1 {
+				if this.c.ChannelIdSize() <= 1 {
+					data := core.NewFrame(core.CLOSE_CO, this.pc.ChannelId, core.NO_PAYLOAD)
+					this.c.OutChan <- data
+				}
 			}
 			return
 		}

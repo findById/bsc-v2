@@ -4,19 +4,22 @@ import (
 	"net"
 	"bsc-v2/core"
 	"sort"
+	"sync"
 )
 
 type Client struct {
-	Id         string // 客户端Id
-	Conn       *net.TCPConn
+	Id         string       // 客户端Id
+	Conn       *net.TCPConn // 客户端连接
 
 	InChan     chan (core.Frame)
 	OutChan    chan (core.Frame)
 
-	channelIds []uint8
+	channelIds []uint8      // 当前与客户端通信的通道Id列表
 
 	IsClosed   bool
 	IsAuthed   bool
+
+	Lock       sync.RWMutex
 }
 
 func (this *Client) Close() {
@@ -40,6 +43,8 @@ func NewClient(conn *net.TCPConn) *Client {
 // channel
 
 func (this *Client) NewChannelId() uint8 {
+	this.Lock.Lock()
+	defer this.Lock.Unlock();
 	sort.Slice(this.channelIds, func(i, j int) bool {
 		return this.channelIds[i] - this.channelIds[j] < 0
 	})
@@ -60,6 +65,8 @@ func (this *Client) NewChannelId() uint8 {
 }
 
 func (this *Client) RemoveChannelId(id uint8) {
+	this.Lock.Lock()
+	defer this.Lock.Unlock();
 	for i, cId := range this.channelIds {
 		if cId == id {
 			this.channelIds = append(this.channelIds[:i], this.channelIds[i + 1:]...)
