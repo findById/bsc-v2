@@ -136,6 +136,6 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 		}
 	}
 
-	h := site.NewSiteHandler(c, pc)
+	h := site.NewSiteHandler(c, this.cm, pc, this.pcm)
 	h.Start()
 }

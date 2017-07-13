@@ -27,6 +27,9 @@ func (this *ClientManager) AddClient(client *Client) {
 }
 
 func (this *ClientManager) RemoveClient(id string) {
+	if this.Size() <= 1 {
+		return
+	}
 	this.Lock.Lock()
 	// defer this.Lock.Unlock();
 	c, ok := this.ConnMap[id]

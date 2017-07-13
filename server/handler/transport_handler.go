@@ -70,6 +70,9 @@ func (this *TransportHandler) WritePacket() {
 		case data := <-this.client.OutChan:
 			log.Println("client write data", data.Channel(), core.RN[int(data.Class())])
 			fw.WriteFrame(data)
+			if data.Class() == core.CLOSE_CO {
+				this.cm.RemoveClient(this.client.Id)
+			}
 		}
 	}
 }
