@@ -36,9 +36,9 @@ func (this *ProxyClientManager) RemoveClient(id string) {
 	this.Lock.Unlock()
 }
 
-func (this *ProxyClientManager) GetClientByChannelId(id uint8) *ProxyClient {
-	for _, c := range this.ConnMap {
-		if c.ChannelId == id {
+func (this *ProxyClientManager) GetClientByChannelId(id uint8, cId string) *ProxyClient {
+	for _, c := range this.CloneMap() {
+		if c != nil && !c.IsClosed && c.ChannelId == id && c.ClientId == cId {
 			return c
 		}
 	}

@@ -49,7 +49,7 @@ func (this *TransportHandler) ReadPacket() {
 		case core.DATA:
 			cId := f.Channel()
 			// 查找是否存在当前channelId的连接，如该没有告诉客户端关闭数据通道
-			c := this.pcm.GetClientByChannelId(cId)
+			c := this.pcm.GetClientByChannelId(cId, this.client.Id)
 			if c == nil {
 				// 通知客户端关闭当前数据通道
 				log.Println("not found channel id", cId)

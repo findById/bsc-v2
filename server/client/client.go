@@ -28,8 +28,8 @@ func NewClient(conn *net.TCPConn) *Client {
 	c := &Client{
 		Id:         conn.RemoteAddr().String(),
 		Conn:conn,
-		InChan:make(chan (core.Frame), 100),
-		OutChan:make(chan (core.Frame), 100),
+		InChan:make(chan (core.Frame), 10000),
+		OutChan:make(chan (core.Frame), 10000),
 		channelIds:make([]uint8, 0),
 		IsClosed:   false,
 		IsAuthed:   false,

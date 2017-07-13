@@ -2,53 +2,24 @@ package site
 
 import (
 	"bsc-v2/server/client"
-	"net"
 	"bsc-v2/core"
-	"time"
 	"log"
 )
 
 type SiteTransportHandler struct {
-	cm      *client.ClientManager
-	c       *client.Client
-
-	pcm     *ProxyClientManager
-	pc      *ProxyClient
+	c       *client.Client // 代理客户端
+	pc      *ProxyClient   // 用户访问端
 	OutChan chan (core.Frame)
 }
 
-func NewSiteHandler(conn *net.TCPConn, pcm *ProxyClientManager, cm *client.ClientManager) *SiteTransportHandler {
-	client := NewProxyClient(conn)
+func NewSiteHandler(c *client.Client, pc *ProxyClient) *SiteTransportHandler {
 	return &SiteTransportHandler{
-		pcm:  pcm,
-		pc:  client,
-		cm:      cm,
+		c:c,
+		pc:  pc,
 	}
 }
 
 func (this *SiteTransportHandler) Start() {
-	beginTime := time.Now().Unix()
-	a: // 未解决无客户端情况下接收到的连接
-	for now := int64(0); (now - beginTime) < 10; now = time.Now().Unix() {
-		// 查找可用连接通道 (临时解决方案)
-		for _, conn := range this.cm.ConnMap {
-			if conn.ChannelIdSize() < 10 {
-				this.pc.ChannelId = conn.NewChannelId()
-				this.c = conn // 复用当前可用数据通道
-				this.pcm.Add(this.pc)
-				log.Println("new channel id", this.pc.ChannelId)
-				break a
-			} else {
-				// 告诉客户端打开新的连接接收数据
-				data := core.NewFrame(core.NEW_CO, this.pc.ChannelId, core.NO_PAYLOAD)
-				conn.OutChan <- data
-
-				// 等待客户端连接
-				time.Sleep(5 * time.Second)
-			}
-		}
-	}
-
 	go this.WritePacket()
 	go this.ReadPacket()
 }
