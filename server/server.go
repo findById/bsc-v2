@@ -8,7 +8,10 @@ import (
 	"bsc-v2/server/site"
 	"time"
 	"bsc-v2/core"
+	"runtime"
 )
+
+const CHANNEL_SIZE int = 100
 
 type ProxyServer struct {
 	cm       *client.ClientManager
@@ -39,6 +42,13 @@ func (this *ProxyServer) Start(dataPort, userPort string) {
 		log.Panic(err)
 		return
 	}
+	ticker := time.NewTicker(time.Second * 10)
+	go func() {
+		for range ticker.C {
+			log.Println("monitor CPU:", runtime.NumCPU(), "Routine:", runtime.NumGoroutine(), "Client:", this.cm.Size(), "ProxyClient:", this.pcm.Size())
+			runtime.GC()
+		}
+	}()
 }
 
 /**
@@ -71,7 +81,7 @@ func (this *ProxyServer) listenDataPort(addr string) (err error) {
 处理客户端发起的连接 (数据传输)
  */
 func (this *ProxyServer) handleDataConnection(conn *net.TCPConn) {
-	log.Println("handle data conn", conn.RemoteAddr().String())
+	log.Println("handle data conn:", conn.RemoteAddr().String(), "Goroutine:", runtime.NumGoroutine())
 	h := handler.NewHandler(conn, this.cm, this.pcm)
 	h.Start()
 }
@@ -104,7 +114,7 @@ func (this *ProxyServer) listenUserPort(addr string) (err error) {
 处理用户端发起的请求
  */
 func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
-	log.Println("handle user conn", conn.RemoteAddr().String())
+	log.Println("handle proxy conn:", conn.RemoteAddr().String(), "Goroutine:", runtime.NumGoroutine())
 
 	pc := site.NewProxyClient(conn)
 	var c *client.Client
@@ -132,12 +142,12 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 				if conn == nil || conn.IsClosed {
 					continue
 				}
-				if conn.ChannelIdSize() < 2 {
+				if conn.ChannelIdSize() < CHANNEL_SIZE {
 					pc.ChannelId = conn.NewChannelId()
 					pc.ClientId = conn.Id
 					c = conn // 复用当前可用数据通道
 					this.pcm.Add(pc)
-					log.Println("new channel id", pc.ChannelId)
+					//log.Println("new channel id", pc.ChannelId)
 					break finded
 				}
 			}
@@ -152,6 +162,16 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 		return
 	}
 
+	// 如该当前与客户端的连接大于1个，寻找空闲的连接并通知客户端关闭
+	if len(this.cm.CloneMap()) > 1 {
+		for _, v := range this.cm.CloneMap() {
+			if v != c && c.ChannelIdSize() < 1 {
+				data := core.NewFrame(core.CLOSE_CO, pc.ChannelId, core.NO_PAYLOAD)
+				v.OutChan <- data
+			}
+		}
+	}
+
 	h := site.NewSiteHandler(c, this.cm, pc, this.pcm)
 	h.Start()
 }
@@ -163,11 +183,11 @@ func (this *ProxyServer) searchConn(pc *site.ProxyClient) (*client.Client, bool)
 			continue
 		}
 		c = conn // 复用当前可用连接
-		if conn.ChannelIdSize() < 10 {
+		if conn.ChannelIdSize() < CHANNEL_SIZE {
 			pc.ChannelId = conn.NewChannelId()
 			pc.ClientId = conn.Id
 			this.pcm.Add(pc)
-			log.Println("new channel id", pc.ChannelId)
+			//log.Println("new channel id", pc.ChannelId)
 			return c, true
 		}
 	}
