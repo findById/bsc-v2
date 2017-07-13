@@ -172,6 +172,7 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 		}
 	}
 
+	log.Println("work cId:", c.Id, "pcId:", pc.Id, "channelId:", pc.ChannelId)
 	h := site.NewSiteHandler(c, this.cm, pc, this.pcm)
 	h.Start()
 }
