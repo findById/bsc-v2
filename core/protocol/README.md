@@ -2,7 +2,7 @@
 
 ## Frame format
 
-|长度 |类型|帧Id|载体|
+|长度 |类型|通道Id|载体|
 |:----:|:----:|:----:|:----:|
 |Length (uint32)|Type (uint8)|ChannelId (uint8)|Payload ([]byte)|
 |uint32|uint8|uint8|...|
