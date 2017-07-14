@@ -57,10 +57,10 @@ func (d *DataConn) closeChannel(ch uint8, notify bool) {
 	if notify {
 		bsc.NewFrameWriter(d.conn).WriteUnPackFrame(bsc.CLOSE_CH, ch, bsc.NO_PAYLOAD)
 	}
-	//d.logf("close channel %d", ch)
+	d.logf("close channel %d", ch)
 	if conn, ok := d.targets[ch]; ok {
 		delete(d.targets, ch)
-		//		d.logf("close target conn %s", conn.LocalAddr().String())
+		d.logf("close target conn %s", conn.LocalAddr().String())
 		conn.Close()
 	}
 }
@@ -69,14 +69,14 @@ func (d *DataConn) close() {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	if d.conn != nil {
-		//d.logf("close data conn %s", d.conn.LocalAddr().String())
+		d.logf("close data conn %s", d.conn.LocalAddr().String())
 		d.conn.Close()
 	}
 	for ch, _ := range d.targets {
-		//d.logf("close channel %d", ch)
+		d.logf("close channel %d", ch)
 		if conn, ok := d.targets[ch]; ok {
 			delete(d.targets, ch)
-			//d.logf("close target conn %s", conn.LocalAddr().String())
+			d.logf("close target conn %s", conn.LocalAddr().String())
 			conn.Close()
 		}
 	}
@@ -106,11 +106,19 @@ func (d *DataConn) do(ack bool) {
 		d.logf("dial server err:%v", err)
 		return
 	}
-	conn.SetNoDelay(true)
+	//	conn.SetNoDelay(true)
 	fw := bsc.NewFrameWriter(conn)
-	fw.WriteUnPackFrame(bsc.AUTH, 0, d.token)
+	_, err = fw.WriteUnPackFrame(bsc.AUTH, 0, d.token)
+	if err != nil {
+		d.logf("auth failed: %v", err)
+		return
+	}
 	if ack {
-		fw.WriteUnPackFrame(bsc.NEW_CO_ACK, 0, bsc.NO_PAYLOAD)
+		_, err = fw.WriteUnPackFrame(bsc.NEW_CO_ACK, 0, bsc.NO_PAYLOAD)
+		if err != nil {
+			d.logf("new connection ack failed: %v", err)
+			return
+		}
 	}
 	d.conn = conn
 	d.reader = bsc.NewFrameReader(conn)
@@ -131,7 +139,7 @@ func (d *DataConn) do(ack bool) {
 					d.logf("write target with err: %v", err)
 					_, err := bsc.NewFrameWriter(d.conn).WriteUnPackFrame(bsc.CLOSE_CH, frame.Channel(), bsc.NO_PAYLOAD)
 					if err != nil {
-						d.logf("close connection with err:%v", err)
+						d.logf("close connection with err: %v", err)
 						break
 					}
 				}
@@ -162,14 +170,14 @@ func (d *DataConn) do(ack bool) {
 }
 
 func (d *DataConn) newChannel(ch uint8, payload []byte) {
-	//d.logf("new channel %d", ch)
+	d.logf("new channel %d", ch)
 	tConn, err := net.DialTCP("tcp", nil, d.targetAddr)
 	if err != nil {
 		d.logf("dial target err:%v", err)
 		d.closeChannel(ch, true)
 		return
 	}
-	tConn.SetNoDelay(true)
+	//	tConn.SetNoDelay(true)
 	d.putTargets(ch, tConn)
 	tConn.Write(payload)
 	go func() {
@@ -193,8 +201,10 @@ func (d *DataConn) putTargets(ch uint8, conn *net.TCPConn) {
 }
 
 func (d *DataConn) logf(format string, v ...interface{}) {
-	vars := make([]interface{}, 1+len(v))
-	vars[0] = d.id
-	copy(vars[1:], v)
-	log.Printf("[%d] "+format+"\n", vars...)
+	if *debug {
+		vars := make([]interface{}, 1+len(v))
+		vars[0] = d.id
+		copy(vars[1:], v)
+		log.Printf("[%d] "+format+"\n", vars...)
+	}
 }

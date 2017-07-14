@@ -13,10 +13,12 @@ import (
 )
 
 var (
-	server = flag.String("s", "", "server address")
-	target = flag.String("t", "", "target service address")
-	user   = flag.String("u", "", "user name")
-	token  = flag.String("p", "", "auth token")
+	server  = flag.String("s", "", "server address")
+	target  = flag.String("t", "", "target service address")
+	user    = flag.String("u", "", "user name")
+	token   = flag.String("p", "", "auth token")
+	install = flag.Bool("i", false, "install with systemd")
+	debug   = flag.Bool("d", false, "debug mode")
 )
 
 func main() {
@@ -50,7 +52,7 @@ func main() {
 			log.Println("[G] alive conns:", aliveConn, "goroutine:", runtime.NumGoroutine())
 		}
 	}()
-	for _ = range time.Tick(time.Second * 1) {
+	for {
 		log.Println("[G] START WORK.")
 		exit := make(chan (int), 10)
 		go NewDataConn(serverAddr, targetAddr, authToken, exit).do(false)
@@ -61,5 +63,6 @@ func main() {
 			}
 		}
 		log.Println("[G] JOB DONE.")
+		_ = <-time.Tick(time.Second * 30)
 	}
 }
