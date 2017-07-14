@@ -74,12 +74,13 @@ func (this *TransportHandler) ReadPacket() {
 			c := this.pcm.GetProxyClientByChannelId(cId, this.client.Id)
 			if c == nil {
 				// 通知客户端关闭当前数据通道
-				// log.Println("not found channel id", cId)
+				log.Println("not found channel id", cId)
 				this.client.OutChan <- core.NewFrame(core.CLOSE_CH, cId, core.NO_PAYLOAD)
 				continue
 			}
 			// 把数据处理权交给对应channelId的用户连接
-			c.OutChan <- f.Payload()
+			log.Printf("write data %v, %v", c.Id, len(f.Payload()))
+			c.OutChan <- f
 		case core.CLOSE_CH: // 客户端发起的关闭通道请求
 			log.Printf("client read data >> cId:%s, chId:%d, t:%s \n", this.client.Id, int(f.Channel()), core.RN[int(f.Class())])
 			if !this.client.IsAuthed {
@@ -91,7 +92,7 @@ func (this *TransportHandler) ReadPacket() {
 			this.client.RemoveChannelId(f.Channel())
 			pc := this.pcm.GetProxyClientByChannelId(f.Channel(), this.client.Id)
 			if pc != nil {
-				this.pcm.RemoveClient(pc.Id)
+				pc.OutChan <- f
 			}
 		case core.CLOSE_CO: // 客户端发起的关闭连接请求
 			log.Printf("client read data >> cId:%s, chId:%d, t:%s \n", this.client.Id, int(f.Channel()), core.RN[int(f.Class())])
@@ -117,9 +118,10 @@ func (this *TransportHandler) WritePacket() {
 	for this.client != nil && !this.client.IsClosed {
 		select {
 		case data := <-this.client.OutChan:
-		//log.Printf("client write data >> cId:%s, chId:%d, t:%s \n", this.client.Id, int(data.Channel()), core.RN[int(data.Class())])
+			//log.Printf("client write data >> cId:%s, chId:%d, t:%s \n", this.client.Id, int(data.Channel()), core.RN[int(data.Class())])
 			_, err := fw.WriteFrame(data)
 			if err != nil {
+				log.Println(err)
 				this.cm.RemoveClient(this.client.Id)
 				return
 			}

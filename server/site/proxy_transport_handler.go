@@ -3,6 +3,8 @@ package site
 import (
 	"bsc-v2/server/client"
 	"bsc-v2/core"
+	"log"
+	"io"
 )
 
 type SiteTransportHandler struct {
@@ -31,8 +33,8 @@ func (this *SiteTransportHandler) ReadPacket() {
 	for this.pc != nil && !this.pc.IsClosed {
 		n, err := this.pc.Conn.Read(buf)
 		// 如果代理客户端已经关闭，就无法在提供服务
-		if err != nil || this.c == nil || this.c.IsClosed {
-			//log.Println("proxy read data error", err)
+		if (err != nil && err != io.EOF) || this.c == nil || this.c.IsClosed {
+			log.Println("proxy read data error", err)
 			this.pcm.RemoveClient(this.pc.Id)
 
 			// 通知客户端关闭数据通道
@@ -41,6 +43,7 @@ func (this *SiteTransportHandler) ReadPacket() {
 				data := core.NewFrame(core.CLOSE_CH, this.pc.ChannelId, core.NO_PAYLOAD)
 				this.c.OutChan <- data
 			}
+
 			// 如该当前与客户端的连接大于1个，寻找空闲的连接并通知客户端关闭 (设计重复,待优化 server.go)
 			if len(this.cm.CloneMap()) > 1 {
 				for _, v := range this.cm.CloneMap() {
@@ -54,8 +57,10 @@ func (this *SiteTransportHandler) ReadPacket() {
 		}
 		//log.Printf("proxy read data >> %v", buf[:n])
 		// 将数据处理权交给客户端连接处理
-		data := core.NewFrame(core.DATA, this.pc.ChannelId, buf[:n])
-		this.c.OutChan <- data
+		if n > 0 {
+			data := core.NewFrame(core.DATA, this.pc.ChannelId, buf[:n])
+			this.c.OutChan <- data
+		}
 	}
 }
 
@@ -63,11 +68,16 @@ func (this *SiteTransportHandler) WritePacket() {
 	for this.pc != nil && !this.pc.IsClosed {
 		select {
 		case data := <-this.pc.OutChan:
-		//log.Printf("proxy write data >> %v", data)
-			_, err := this.pc.Conn.Write(data)
-			if err != nil {
+		//log.Printf("proxy write data >> %v", data.Payload())
+			switch data.Class() {
+			case core.DATA:
+				_, err := this.pc.Conn.Write(data.Payload())
+				if err != nil {
+					this.pcm.RemoveClient(this.pc.Id)
+					return
+				}
+			case core.CLOSE_CH:
 				this.pcm.RemoveClient(this.pc.Id)
-				return
 			}
 		case data := <-this.pc.CloseChan:
 			if data == TYPE_CLOSE {

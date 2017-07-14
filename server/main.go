@@ -22,8 +22,8 @@ func main() {
 		return
 	}
 
-	log.Println(*dataPort)
-	log.Println(*userPort)
+	log.Println("Accepting data connections at:", *dataPort)
+	log.Println("Accepting user connections at:", *userPort)
 
 	h := md5.New().Sum([]byte(*username + ":" + *password))
 	b := base64.StdEncoding.EncodeToString(h)

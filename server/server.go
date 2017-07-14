@@ -11,7 +11,7 @@ import (
 	"runtime"
 )
 
-const CHANNEL_SIZE int = 100
+const CHANNEL_SIZE int = 1
 
 type ProxyServer struct {
 	cm       *client.ClientManager
