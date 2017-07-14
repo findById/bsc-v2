@@ -9,7 +9,7 @@
 
 ### Type
 |KEY |VALUE|DESC|
-|:----:|:----:|:----:|:----:|
+|:----:|:----:|:----:|
 |DATA|0|数据|
 |NEW_CONNECT|1|打开新连接|
 |NEW_CONNECT_ACK|2|新连接ACK|
