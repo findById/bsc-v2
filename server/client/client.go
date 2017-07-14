@@ -7,12 +7,17 @@ import (
 	"sync"
 )
 
+const (
+	TYPE_CLOSE = 1
+)
+
 type Client struct {
 	Id         string       // 客户端Id
 	Conn       *net.TCPConn // 客户端连接
 
 	InChan     chan (core.Frame)
 	OutChan    chan (core.Frame)
+	CloseChan  chan (int)
 
 	channelIds []uint8      // 当前与客户端通信的通道Id列表
 
@@ -25,6 +30,7 @@ type Client struct {
 func (this *Client) Close() {
 	this.IsClosed = true
 	this.Conn.Close()
+	this.CloseChan <- TYPE_CLOSE
 }
 
 func NewClient(conn *net.TCPConn) *Client {
@@ -33,6 +39,7 @@ func NewClient(conn *net.TCPConn) *Client {
 		Conn:conn,
 		InChan:make(chan (core.Frame), 10000),
 		OutChan:make(chan (core.Frame), 10000),
+		CloseChan:make(chan (int), 100),
 		channelIds:make([]uint8, 0),
 		IsClosed:   false,
 		IsAuthed:   false,
@@ -76,6 +83,8 @@ func (this *Client) RemoveChannelId(id uint8) {
 }
 
 func (this *Client) ConsistsChannelId(id uint8) bool {
+	this.Lock.Lock()
+	defer this.Lock.Unlock();
 	for _, i := range this.channelIds {
 		if i == id {
 			return true

@@ -3,8 +3,8 @@ package client
 import "sync"
 
 type ClientManager struct {
-	ConnMap     map[string]*Client
-	Lock        sync.RWMutex
+	ConnMap map[string]*Client
+	Lock    sync.RWMutex
 }
 
 func NewClientManager() *ClientManager {
@@ -27,9 +27,6 @@ func (this *ClientManager) AddClient(client *Client) {
 }
 
 func (this *ClientManager) RemoveClient(id string) {
-	if this.Size() <= 1 {
-		return
-	}
 	this.Lock.Lock()
 	// defer this.Lock.Unlock();
 	c, ok := this.ConnMap[id]
@@ -58,7 +55,7 @@ func (this *ClientManager) CloneMap() []*Client {
 	clone := make([]*Client, len(this.ConnMap))
 	i := 0
 	for _, v := range this.ConnMap {
-		if v.IsClosed {
+		if v == nil || v.IsClosed {
 			closedIds = append(closedIds, v.Id)
 			continue
 		}

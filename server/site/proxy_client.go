@@ -4,6 +4,10 @@ import (
 	"net"
 )
 
+const (
+	TYPE_CLOSE = 1
+)
+
 type ProxyClient struct {
 	Id        string       // 用户端连接Id
 	Conn      *net.TCPConn // 用户端连接
@@ -12,6 +16,7 @@ type ProxyClient struct {
 
 	InChan    chan ([]byte)
 	OutChan   chan ([]byte)
+	CloseChan chan (int)
 
 	ChannelId uint8        // 用户复用客户端连接的通道Id
 
@@ -21,6 +26,7 @@ type ProxyClient struct {
 func (this *ProxyClient) Close() {
 	this.IsClosed = true
 	this.Conn.Close()
+	this.CloseChan <- TYPE_CLOSE
 }
 
 func NewProxyClient(conn *net.TCPConn) *ProxyClient {
@@ -29,6 +35,7 @@ func NewProxyClient(conn *net.TCPConn) *ProxyClient {
 		Conn:conn,
 		InChan:make(chan ([]byte), 10000),
 		OutChan:make(chan ([]byte), 10000),
+		CloseChan:make(chan (int), 100),
 		IsClosed:false,
 	}
 }

@@ -135,21 +135,26 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 
 		// 等待客户端打开新连接，10秒超时
 		beginTime := time.Now().Unix()
-		finded: // 未解决无客户端情况下接收到的连接
+		work: // 等待客户端发起可用连接，10秒超时
 		for now := int64(0); (now - beginTime) < 10; now = time.Now().Unix() {
 			// 等待客户端连接
-			for _, conn := range this.cm.CloneMap() {
-				if conn == nil || conn.IsClosed {
-					continue
-				}
-				if conn.ChannelIdSize() < CHANNEL_SIZE {
-					pc.ChannelId = conn.NewChannelId()
-					pc.ClientId = conn.Id
-					c = conn // 复用当前可用数据通道
-					this.pcm.Add(pc)
-					//log.Println("new channel id", pc.ChannelId)
-					break finded
-				}
+			//for _, conn := range this.cm.CloneMap() {
+			//	if conn == nil || conn.IsClosed {
+			//		continue
+			//	}
+			//	if conn.ChannelIdSize() < CHANNEL_SIZE {
+			//		pc.ChannelId = conn.NewChannelId()
+			//		pc.ClientId = conn.Id
+			//		c = conn // 复用当前可用数据通道
+			//		this.pcm.Add(pc)
+			//		//log.Println("new channel id", pc.ChannelId)
+			//		break finded
+			//	}
+			//}
+			client, success := this.searchConn(pc)
+			if success {
+				c = client
+				break work
 			}
 		}
 	} else {
@@ -162,7 +167,7 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 		return
 	}
 
-	// 如该当前与客户端的连接大于1个，寻找空闲的连接并通知客户端关闭
+	// 如该当前与客户端的连接大于1个，寻找空闲的连接并通知客户端关闭 (设计重复,待优化 proxy_transport_handler.go)
 	if len(this.cm.CloneMap()) > 1 {
 		for _, v := range this.cm.CloneMap() {
 			if v != c && c.ChannelIdSize() < 1 {

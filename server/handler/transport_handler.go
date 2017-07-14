@@ -39,23 +39,27 @@ func (this *TransportHandler) ReadPacket() {
 				continue
 			}
 			//log.Println("client read data error", err)
-			this.cm.RemoveClient(this.client.Id)
+			if this.cm.Size() > 1 {
+				this.cm.RemoveClient(this.client.Id)
+			}
 			return
 		}
-		//log.Println("client read data", "channelId:", f.Channel(), "type:", core.RN[int(f.Class())])
+		log.Printf("client read data >> cId:%s, chId:%d, t:%s \n", this.client.Id, int(f.Channel()), core.RN[int(f.Class())])
 		switch f.Class() {
 		case core.AUTH: // 用户发起验证
-			log.Println("client read data", "channelId:", f.Channel(), "type:", core.RN[int(f.Class())])
+			//log.Printf("client read data >> cId:%s, chId:%d, t:%s \n", this.client.Id, int(f.Channel()), core.RN[int(f.Class())])
 			// 验证客户端后添加到连接库
 			this.client.IsAuthed = true
 			this.cm.AddClient(this.client)
 
 			// 客户端认证回应
-			// log.Println("auth ack")
+			log.Println("auth ack")
 			this.client.OutChan <- core.NewFrame(core.AUTH_ACK, 0, []byte{0})
 		case core.DATA: // 数据传输
 			if !this.client.IsAuthed {
-				this.cm.RemoveClient(this.client.Id)
+				if this.cm.Size() > 1 {
+					this.cm.RemoveClient(this.client.Id)
+				}
 				return
 			}
 			cId := f.Channel()
@@ -70,9 +74,11 @@ func (this *TransportHandler) ReadPacket() {
 			// 把数据处理权交给对应channelId的用户连接
 			c.OutChan <- f.Payload()
 		case core.CLOSE_CH: // 客户端发起的关闭通道请求
-			log.Println("client read data", "channelId:", f.Channel(), "type:", core.RN[int(f.Class())])
+			//log.Printf("client read data >> cId:%s, chId:%d, t:%s \n", this.client.Id, int(f.Channel()), core.RN[int(f.Class())])
 			if !this.client.IsAuthed {
-				this.cm.RemoveClient(this.client.Id)
+				if this.cm.Size() > 1 {
+					this.cm.RemoveClient(this.client.Id)
+				}
 				return
 			}
 			this.client.RemoveChannelId(f.Channel())
@@ -81,12 +87,16 @@ func (this *TransportHandler) ReadPacket() {
 				this.pcm.RemoveClient(pc.Id)
 			}
 		case core.CLOSE_CO: // 客户端发起的关闭连接请求
-			log.Println("client read data", "channelId:", f.Channel(), "type:", core.RN[int(f.Class())])
+			//log.Printf("client read data >> cId:%s, chId:%d, t:%s \n", this.client.Id, int(f.Channel()), core.RN[int(f.Class())])
 			if !this.client.IsAuthed {
-				this.cm.RemoveClient(this.client.Id)
+				if this.cm.Size() > 1 {
+					this.cm.RemoveClient(this.client.Id)
+				}
 				return
 			}
-			this.cm.RemoveClient(this.client.Id)
+			if this.cm.Size() > 1 {
+				this.cm.RemoveClient(this.client.Id)
+			}
 			pc := this.pcm.GetProxyClientByClientId(this.client.Id)
 			if pc != nil {
 				this.pcm.RemoveClient(pc.Id)
@@ -100,12 +110,19 @@ func (this *TransportHandler) WritePacket() {
 	for this.client != nil && !this.client.IsClosed {
 		select {
 		case data := <-this.client.OutChan:
-		//log.Println("client write data", "channelId:", data.Channel(), "type:", core.RN[int(data.Class())])
-			fw.WriteFrame(data)
-
+			log.Printf("client write data >> cId:%s, chId:%d, t:%s \n", this.client.Id, int(data.Channel()), core.RN[int(data.Class())])
+			_, err := fw.WriteFrame(data)
+			if err != nil {
+				this.cm.RemoveClient(this.client.Id)
+				return
+			}
 		// 如果是关闭连接消息，发送后主动关掉连接
 			if data.Class() == core.CLOSE_CO {
 				this.cm.RemoveClient(this.client.Id)
+			}
+		case data := <-this.client.CloseChan:
+			if data == client.TYPE_CLOSE {
+				return
 			}
 		}
 	}
