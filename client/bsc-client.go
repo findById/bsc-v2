@@ -18,7 +18,8 @@ var (
 	user    = flag.String("u", "", "user name")
 	token   = flag.String("p", "", "auth token")
 	install = flag.Bool("i", false, "install with systemd")
-	debug   = flag.Bool("d", false, "debug mode")
+	debug   = flag.Bool("d", false, "debug mode,default false")
+	nodelay = flag.Bool("nodelay", true, "tcp nodelay,default true")
 )
 
 func main() {
@@ -38,9 +39,11 @@ func main() {
 		log.Println(err)
 		return
 	}
-	log.Println("[G] PID:", os.Getpid())
-	log.Println("[G] server addr:", serverAddr.String())
-	log.Println("[G] target addr:", targetAddr.String())
+	log.Printf("[G] PID:%v UID: %v\n", os.Getpid(), os.Getuid())
+	log.Println("[G] DEBUG  MODE:", *debug)
+	log.Println("[G] TCP NODELAY:", *nodelay)
+	log.Println("[G] SERVER ADDR:", serverAddr.String())
+	log.Println("[G] TARGET ADDR:", targetAddr.String())
 	hash := md5.New()
 	authToken := hash.Sum([]byte(*user + ":" + *token))
 	go func() {
@@ -55,7 +58,7 @@ func main() {
 	for {
 		log.Println("[G] START WORK.")
 		exit := make(chan (int), 10)
-		go NewDataConn(serverAddr, targetAddr, authToken, exit).do(false)
+		go NewDataConn(serverAddr, targetAddr, authToken, *nodelay, *debug, exit).do(false)
 		for n := range exit {
 			aliveConn = aliveConn + n
 			if aliveConn < 1 {

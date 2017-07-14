@@ -37,12 +37,16 @@ type DataConn struct {
 	reader     *bsc.FrameReader
 	exit       chan (int)
 	lock       *sync.Mutex
+	debug      bool
+	nodelay    bool
 }
 
-func NewDataConn(serverAddr, targetAddr *net.TCPAddr, token []byte, exit chan (int)) *DataConn {
+func NewDataConn(serverAddr, targetAddr *net.TCPAddr, token []byte, nodelay, debug bool, exit chan (int)) *DataConn {
 	return &DataConn{
 		id:         nextId(),
 		token:      token,
+		debug:      debug,
+		nodelay:    nodelay,
 		targetAddr: targetAddr,
 		serverAddr: serverAddr,
 		exit:       exit,
@@ -106,7 +110,7 @@ func (d *DataConn) do(ack bool) {
 		d.logf("dial server err:%v", err)
 		return
 	}
-	//	conn.SetNoDelay(true)
+	conn.SetNoDelay(d.nodelay)
 	fw := bsc.NewFrameWriter(conn)
 	_, err = fw.WriteUnPackFrame(bsc.AUTH, 0, d.token)
 	if err != nil {
@@ -158,7 +162,7 @@ func (d *DataConn) do(ack bool) {
 			d.logf("server request close connection")
 			break
 		} else if frame.Class() == bsc.NEW_CO {
-			go NewDataConn(d.serverAddr, d.targetAddr, d.token, d.exit).do(true)
+			go NewDataConn(d.serverAddr, d.targetAddr, d.token, d.nodelay, d.debug, d.exit).do(true)
 		} else if frame.Class() == bsc.PING {
 			_, err := bsc.NewFrameWriter(d.conn).WriteUnPackFrame(bsc.PONG, 0, bsc.NO_PAYLOAD)
 			if err != nil {
@@ -170,14 +174,14 @@ func (d *DataConn) do(ack bool) {
 }
 
 func (d *DataConn) newChannel(ch uint8, payload []byte) {
-	d.logf("new channel %d", ch)
+	d.logf("new channel %d ,with %d byte payload", ch, len(payload))
 	tConn, err := net.DialTCP("tcp", nil, d.targetAddr)
 	if err != nil {
 		d.logf("dial target err:%v", err)
 		d.closeChannel(ch, true)
 		return
 	}
-	//	tConn.SetNoDelay(true)
+	tConn.SetNoDelay(true)
 	d.putTargets(ch, tConn)
 	tConn.Write(payload)
 	go func() {
@@ -187,9 +191,7 @@ func (d *DataConn) newChannel(ch uint8, payload []byte) {
 				Class:   bsc.DATA,
 				Writer:  d.conn},
 			tConn)
-		if err != nil {
-			d.logf("copy %d bytes, with err:%v", n, err)
-		}
+		d.logf("copy %d bytes, with err:%v", n, err)
 		d.closeChannel(ch, true)
 	}()
 }
@@ -201,7 +203,7 @@ func (d *DataConn) putTargets(ch uint8, conn *net.TCPConn) {
 }
 
 func (d *DataConn) logf(format string, v ...interface{}) {
-	if *debug {
+	if d.debug {
 		vars := make([]interface{}, 1+len(v))
 		vars[0] = d.id
 		copy(vars[1:], v)
