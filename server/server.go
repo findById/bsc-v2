@@ -20,9 +20,12 @@ type ProxyServer struct {
 	limiter  string
 }
 
-func NewProxyServer() *ProxyServer {
+func NewProxyServer(token string) *ProxyServer {
 	cm := client.NewClientManager()
 	pcm := site.NewProxyClientManager()
+
+	cm.AuthToken = token
+
 	return &ProxyServer{
 		cm: cm,
 		pcm:pcm,
@@ -45,7 +48,7 @@ func (this *ProxyServer) Start(dataPort, userPort string) {
 	ticker := time.NewTicker(time.Second * 10)
 	go func() {
 		for range ticker.C {
-			log.Println("monitor CPU:", runtime.NumCPU(), "Routine:", runtime.NumGoroutine(), "Client:", this.cm.Size(), "ProxyClient:", this.pcm.Size())
+			log.Printf("monitor >> CPU:%d, Goroutine:%d, Client:%d, ProxyClient:%d\n", runtime.NumCPU(), runtime.NumGoroutine(), this.cm.Size(), this.pcm.Size())
 			runtime.GC()
 		}
 	}()
@@ -177,7 +180,7 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 		}
 	}
 
-	log.Println("work cId:", c.Id, "pcId:", pc.Id, "channelId:", pc.ChannelId)
+	log.Printf("working >> cId:%s, pcId:%s, chId:%d\n", c.Id, pc.Id, int(pc.ChannelId))
 	h := site.NewSiteHandler(c, this.cm, pc, this.pcm)
 	h.Start()
 }

@@ -3,8 +3,9 @@ package client
 import "sync"
 
 type ClientManager struct {
-	ConnMap map[string]*Client
-	Lock    sync.RWMutex
+	AuthToken string
+	ConnMap   map[string]*Client
+	Lock      sync.RWMutex
 }
 
 func NewClientManager() *ClientManager {

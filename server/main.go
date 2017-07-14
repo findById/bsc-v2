@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"log"
+	"crypto/md5"
+	"encoding/base64"
 )
 
 var (
@@ -22,7 +24,11 @@ func main() {
 
 	log.Println(*dataPort)
 	log.Println(*userPort)
-	server := NewProxyServer()
+
+	h := md5.New().Sum([]byte(*username + ":" + *password))
+	b := base64.StdEncoding.EncodeToString(h)
+
+	server := NewProxyServer(b)
 	server.Start(*dataPort, *userPort)
 	select {
 	}
