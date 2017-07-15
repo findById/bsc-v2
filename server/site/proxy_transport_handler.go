@@ -4,7 +4,6 @@ import (
 	"bsc-v2/server/client"
 	"bsc-v2/core"
 	"log"
-	"io"
 )
 
 type SiteTransportHandler struct {
@@ -32,8 +31,14 @@ func (this *SiteTransportHandler) ReadPacket() {
 	buf := make([]byte, 1024 * 8)
 	for this.pc != nil && !this.pc.IsClosed {
 		n, err := this.pc.Conn.Read(buf)
+		//log.Printf("proxy read data >> %v", buf[:n])
+		// 如果有读到数据，将数据交给客户端连接处理
+		if n > 0 {
+			data := core.NewFrame(core.DATA, this.pc.ChannelId, buf[:n])
+			this.c.OutChan <- data
+		}
 		// 如果代理客户端已经关闭，就无法在提供服务
-		if (err != nil && err != io.EOF) || this.c == nil || this.c.IsClosed {
+		if err != nil || this.c == nil || this.c.IsClosed {
 			log.Println("proxy read data error", err)
 			this.pcm.RemoveClient(this.pc.Id)
 
@@ -54,12 +59,6 @@ func (this *SiteTransportHandler) ReadPacket() {
 				}
 			}
 			return
-		}
-		//log.Printf("proxy read data >> %v", buf[:n])
-		// 将数据处理权交给客户端连接处理
-		if n > 0 {
-			data := core.NewFrame(core.DATA, this.pc.ChannelId, buf[:n])
-			this.c.OutChan <- data
 		}
 	}
 }
