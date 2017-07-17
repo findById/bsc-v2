@@ -34,6 +34,7 @@ func (this *SiteTransportHandler) ReadPacket() {
 	for this.pc != nil && !this.pc.IsClosed {
 		n, err := this.pc.Conn.Read(buf)
 		//log.Printf("proxy read data >> %v", buf[:n])
+		log.Printf("proxy read data >> %v", n)
 		// 如果有读到数据，将数据交给客户端连接处理
 		if n > 0 {
 			data := core.NewFrame(core.DATA, this.pc.ChannelId, buf[:n])
@@ -49,7 +50,6 @@ func (this *SiteTransportHandler) ReadPacket() {
 
 			// 通知客户端关闭数据通道
 			if this.c.ConsistsChannelId(this.pc.ChannelId) {
-				this.c.RemoveChannelId(this.pc.ChannelId)
 				data := core.NewFrame(core.CLOSE_CH, this.pc.ChannelId, core.NO_PAYLOAD)
 				this.c.OutChan <- data
 			}
@@ -73,6 +73,7 @@ func (this *SiteTransportHandler) WritePacket() {
 		select {
 		case data := <-this.pc.OutChan:
 		//log.Printf("proxy write data >> %v", data.Payload())
+			log.Printf("proxy read data >> %v", len(data.Payload()))
 			switch data.Class() {
 			case core.DATA:
 				_, err := this.pc.Conn.Write(data.Payload())

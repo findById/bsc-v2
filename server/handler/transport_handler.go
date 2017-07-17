@@ -50,7 +50,7 @@ func (this *TransportHandler) ReadPacket() {
 			return
 		}
 		if this.debug && f.Class() != core.DATA {
-			log.Printf("client read data >> cId:%s, chId:%d, t:%s \n", this.client.Id, int(f.Channel()), core.RN[int(f.Class())])
+			log.Printf("client read data >> cId:%s, chId:%d, t:%s, len:%v \n", this.client.Id, int(f.Channel()), core.RN[int(f.Class())], f.Size())
 		}
 		switch f.Class() {
 		case core.AUTH: // 客户端发起认证请求
@@ -100,6 +100,14 @@ func (this *TransportHandler) ReadPacket() {
 			if pc != nil {
 				pc.OutChan <- f
 			}
+		case core.CLOSE_CH_ACK: // 收到客户端关闭通道的回应后，释放通道
+			if !this.client.IsAuthed {
+				if this.cm.Size() > 1 {
+					this.cm.RemoveClient(this.client.Id)
+				}
+				return
+			}
+			this.client.RemoveChannelId(f.Channel())
 		case core.CLOSE_CO: // 客户端发起的关闭连接请求
 			if !this.client.IsAuthed {
 				if this.cm.Size() > 1 {
@@ -123,8 +131,8 @@ func (this *TransportHandler) WritePacket() {
 	for this.client != nil && !this.client.IsClosed {
 		select {
 		case data := <-this.client.OutChan:
-			if this.debug && data.Class() != core.DATA {
-				log.Printf("client write data >> cId:%s, chId:%d, t:%s \n", this.client.Id, int(data.Channel()), core.RN[int(data.Class())])
+			if this.debug {
+				log.Printf("client write data >> cId:%s, chId:%d, t:%s, len:%v \n", this.client.Id, int(data.Channel()), core.RN[int(data.Class())], data.Size())
 			}
 			_, err := fw.WriteFrame(data)
 			if err != nil {
