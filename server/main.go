@@ -10,7 +10,7 @@ import (
 var (
 	dataPort = flag.String("dp", "", "data port")
 	userPort = flag.String("up", "", "user port")
-
+	debug = flag.Bool("d", false, "debug, default false")
 	username = flag.String("u", "", "username")
 	password = flag.String("p", "", "password")
 )
@@ -28,7 +28,7 @@ func main() {
 	h := md5.New().Sum([]byte(*username + ":" + *password))
 	b := base64.StdEncoding.EncodeToString(h)
 
-	server := NewProxyServer(b)
+	server := NewProxyServer(b, *debug)
 	server.Start(*dataPort, *userPort)
 	select {
 	}

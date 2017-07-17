@@ -17,10 +17,10 @@ type ProxyServer struct {
 	cm       *client.ClientManager
 	pcm      *site.ProxyClientManager
 	listener *net.TCPListener
-	limiter  string
+	debug    bool
 }
 
-func NewProxyServer(token string) *ProxyServer {
+func NewProxyServer(token string, debug bool) *ProxyServer {
 	cm := client.NewClientManager()
 	pcm := site.NewProxyClientManager()
 
@@ -29,6 +29,7 @@ func NewProxyServer(token string) *ProxyServer {
 	return &ProxyServer{
 		cm: cm,
 		pcm:pcm,
+		debug:debug,
 	}
 }
 
@@ -85,7 +86,7 @@ func (this *ProxyServer) listenDataPort(addr string) (err error) {
  */
 func (this *ProxyServer) handleDataConnection(conn *net.TCPConn) {
 	log.Println("handle data conn:", conn.RemoteAddr().String(), "Goroutine:", runtime.NumGoroutine())
-	h := handler.NewHandler(conn, this.cm, this.pcm)
+	h := handler.NewHandler(conn, this.cm, this.pcm, this.debug)
 	h.Start()
 }
 
@@ -127,14 +128,18 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 	if !success {
 		// 没有找到空闲连接，发起通知客户端打开新连接
 		if client == nil || client.IsClosed {
-			log.Println("not found connect")
+			if this.debug {
+				log.Println("not found connect")
+			}
 			pc.Close()
 			return
 		}
 		// 告诉客户端打开新的连接接收数据
 		data := core.NewFrame(core.NEW_CO, 0, core.NO_PAYLOAD)
 		client.OutChan <- data
-		log.Println("new connect")
+		if this.debug {
+			log.Println("new connect")
+		}
 
 		// 等待客户端打开新连接，10秒超时
 		beginTime := time.Now().Unix()
@@ -165,7 +170,9 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 	}
 
 	if c == nil {
-		log.Println("not found connect")
+		if this.debug {
+			log.Println("not found connect")
+		}
 		pc.Close()
 		return
 	}
@@ -181,7 +188,7 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 	}
 
 	log.Printf("working >> cId:%s, pcId:%s, chId:%d\n", c.Id, pc.Id, int(pc.ChannelId))
-	h := site.NewSiteHandler(c, this.cm, pc, this.pcm)
+	h := site.NewSiteHandler(c, this.cm, pc, this.pcm, this.debug)
 	h.Start()
 }
 

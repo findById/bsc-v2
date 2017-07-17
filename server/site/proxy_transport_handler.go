@@ -7,18 +7,20 @@ import (
 )
 
 type SiteTransportHandler struct {
-	c   *client.Client        // 代理客户端
-	pc  *ProxyClient          // 用户访问端
-	cm  *client.ClientManager // 客户端连接管理
-	pcm *ProxyClientManager   // 用户端连接管理
+	c     *client.Client        // 代理客户端
+	pc    *ProxyClient          // 用户访问端
+	cm    *client.ClientManager // 客户端连接管理
+	pcm   *ProxyClientManager   // 用户端连接管理
+	debug bool
 }
 
-func NewSiteHandler(c *client.Client, cm *client.ClientManager, pc *ProxyClient, pcm *ProxyClientManager) *SiteTransportHandler {
+func NewSiteHandler(c *client.Client, cm *client.ClientManager, pc *ProxyClient, pcm *ProxyClientManager, debug bool) *SiteTransportHandler {
 	return &SiteTransportHandler{
 		c:c,
 		cm:cm,
 		pc:  pc,
 		pcm:pcm,
+		debug:debug,
 	}
 }
 
@@ -38,8 +40,11 @@ func (this *SiteTransportHandler) ReadPacket() {
 			this.c.OutChan <- data
 		}
 		// 如果代理客户端已经关闭，就无法在提供服务
+		if this.c == nil || this.c.IsClosed {
+			log.Println("client unavailable")
+		}
 		if err != nil || this.c == nil || this.c.IsClosed {
-			log.Println("proxy read data error", err)
+			//log.Println("proxy read data error", err)
 			this.pcm.RemoveClient(this.pc.Id)
 
 			// 通知客户端关闭数据通道
@@ -76,6 +81,9 @@ func (this *SiteTransportHandler) WritePacket() {
 					return
 				}
 			case core.CLOSE_CH:
+				if data.Size() > 6 {
+					this.pc.Conn.Write(data.Payload())
+				}
 				this.pcm.RemoveClient(this.pc.Id)
 			}
 		case data := <-this.pc.CloseChan:
