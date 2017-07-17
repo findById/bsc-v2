@@ -13,18 +13,22 @@ var RN = map[int]string{
 	4: "关闭链接",
 	5: "请求认证",
 	6: "认证ACK",
+	7: "PING",
+	8: "PONG",
+	9: "关闭通道ACK",
 }
 
 const (
-	DATA       = 0 //数据 		 [L0,L1,L2,L3,0,CHANNEL_ID,DATA....]
-	NEW_CO     = 1 //打开新连接	 [L0,L1,L2,L3,1,0]
-	NEW_CO_ACK = 2 //新链接ACK     [L0,L1,L2,L3,2,0,REL] REL: 0 success,1 faild
-	CLOSE_CH   = 3 //关闭通道		 [L0,L1,L2,L3,3,CHANNEL_ID]
-	CLOSE_CO   = 4 //关闭链接		 [L0,L1,L2,L3,4,0]
-	AUTH       = 5 //请求认证		 [L0,L1,L2,L3,5,0,DATA....] DATA:MD5(USER:PASSWD)
-	AUTH_ACK   = 6 //认证ACK 		 [L0,L1,L2,L3,6,0,REL] REL: 0 success,1 faild
-	PING       = 7 //PING         [L0,L1,L2,L3,7,0]
-	PONG       = 8 //PONG         [L0,L1,L2,L3,8,0]
+	DATA         = 0 //数据 		  [L0,L1,L2,L3,0,CHANNEL_ID,DATA....]
+	NEW_CO       = 1 //打开新连接	  [L0,L1,L2,L3,1,0]
+	NEW_CO_ACK   = 2 //新链接ACK    [L0,L1,L2,L3,2,0,REL] REL: 0 success,1 faild
+	CLOSE_CH     = 3 //关闭通道     [L0,L1,L2,L3,3,CHANNEL_ID]
+	CLOSE_CO     = 4 //关闭链接     [L0,L1,L2,L3,4,0]
+	AUTH         = 5 //请求认证     [L0,L1,L2,L3,5,0,DATA....] DATA:MD5(USER:PASSWD)
+	AUTH_ACK     = 6 //认证ACK      [L0,L1,L2,L3,6,0,REL] REL: 0 success,1 faild
+	PING         = 7 //PING        [L0,L1,L2,L3,7,0]
+	PONG         = 8 //PONG        [L0,L1,L2,L3,8,0]
+	CLOSE_CH_ACK = 9 //关闭通道ACK	  [L0,L1,L2,L3,9,0]
 )
 
 var NO_PAYLOAD = []byte{}

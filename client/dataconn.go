@@ -158,6 +158,11 @@ func (d *DataConn) do(ack bool) {
 		} else if frame.Class() == bsc.CLOSE_CH {
 			d.logf("server request close channel %d", frame.Channel())
 			d.closeChannel(frame.Channel(), false)
+			_, err := bsc.NewFrameWriter(d.conn).WriteUnPackFrame(bsc.CLOSE_CH_ACK, frame.Channel(), bsc.NO_PAYLOAD)
+			if err != nil {
+				d.logf("close connection with err: %v", err)
+				break
+			}
 		} else if frame.Class() == bsc.CLOSE_CO {
 			d.logf("server request close connection")
 			break
