@@ -40,7 +40,7 @@ func (this *SiteTransportHandler) ReadPacket() {
 			this.c.OutChan <- data
 		}
 		// 如果代理客户端已经关闭，就无法在提供服务
-		if this.c == nil || this.c.IsClosed {
+		if this.debug && (this.c == nil || this.c.IsClosed) {
 			log.Println("client unavailable")
 		}
 		if err != nil || this.c == nil || this.c.IsClosed {
