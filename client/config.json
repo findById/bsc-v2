@@ -1,0 +1,13 @@
+{
+	"User":"",
+	"Password":"",
+	"Retry":-1,
+	"Interval":10,
+	"Debug":true,
+	"Nodelay":true,
+	"Proxies":[{
+		"Server":"127.0.0.1:9092",
+		"Target":"192.168.1.23:80"
+		}
+	]
+}
