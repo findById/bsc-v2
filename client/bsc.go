@@ -35,7 +35,7 @@ var (
 	profile = flag.Bool("p", false, "start profile http server @:6060")
 	mode    = "c"
 
-	connChan    = make(chan (int), 10)
+	connMonitor = make(chan (int), 10)
 	channelChan = make(chan (int), 20)
 )
 
@@ -71,7 +71,7 @@ func main() {
 		var n int
 		for {
 			select {
-			case n = <-connChan:
+			case n = <-connMonitor:
 				aliveConn += n
 			case n = <-channelChan:
 				aliveChannel += n

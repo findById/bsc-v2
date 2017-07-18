@@ -26,7 +26,7 @@ func newProxy(wg *sync.WaitGroup, p *Proxy, debug, noDelay bool, retry, interval
 				log.Println("[G] SERVER ADDR:", serverAddr.String())
 				log.Println("[G] TARGET ADDR:", targetAddr.String())
 				log.Println("[G] START PROXY:", targetAddr.String(), "->", serverAddr.String())
-				NewDataConn(serverAddr, targetAddr, authToken, noDelay, debug, connChan).do(false)
+				NewDataConn(serverAddr, targetAddr, authToken, noDelay, debug, &connMonitor).do(false)
 				log.Println("[G] PROXY JOB DONE.")
 			}
 		}

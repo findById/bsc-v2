@@ -28,30 +28,30 @@ func getId() int64 {
 }
 
 type DataConn struct {
-	id         int64
-	token      []byte
-	targetAddr *net.TCPAddr
-	serverAddr *net.TCPAddr
-	conn       *net.TCPConn
-	targets    map[uint8]*net.TCPConn
-	reader     *bsc.FrameReader
-	exit       chan (int)
-	lock       *sync.Mutex
-	debug      bool
-	nodelay    bool
+	id          int64
+	token       []byte
+	targetAddr  *net.TCPAddr
+	serverAddr  *net.TCPAddr
+	conn        *net.TCPConn
+	targets     map[uint8]*net.TCPConn
+	reader      *bsc.FrameReader
+	connMonitor *chan (int)
+	lock        *sync.Mutex
+	debug       bool
+	nodelay     bool
 }
 
-func NewDataConn(serverAddr, targetAddr *net.TCPAddr, token []byte, nodelay, debug bool, exit chan (int)) *DataConn {
+func NewDataConn(serverAddr, targetAddr *net.TCPAddr, token []byte, nodelay, debug bool, cm *chan (int)) *DataConn {
 	return &DataConn{
-		id:         nextId(),
-		token:      token,
-		debug:      debug,
-		nodelay:    nodelay,
-		targetAddr: targetAddr,
-		serverAddr: serverAddr,
-		exit:       exit,
-		targets:    make(map[uint8]*net.TCPConn),
-		lock:       &sync.Mutex{},
+		id:          nextId(),
+		token:       token,
+		debug:       debug,
+		nodelay:     nodelay,
+		targetAddr:  targetAddr,
+		serverAddr:  serverAddr,
+		connMonitor: cm,
+		targets:     make(map[uint8]*net.TCPConn),
+		lock:        &sync.Mutex{},
 	}
 }
 
@@ -98,13 +98,16 @@ func (d *DataConn) findTarget(ch uint8) (conn *net.TCPConn, ok bool) {
 	return nil, false
 }
 func (d *DataConn) do(ack bool) {
-	defer func(exit chan (int), id int64) {
-		exit <- -1
+	defer func(cm *chan (int), id int64) {
+		if cm != nil {
+			*cm <- -1
+		}
 		log.Printf("[%d] JOB DONE.", id)
-	}(d.exit, d.id)
+	}(d.connMonitor, d.id)
 	defer d.close()
-
-	d.exit <- 1
+	if d.connMonitor != nil {
+		*d.connMonitor <- 1
+	}
 	conn, err := net.DialTCP("tcp", nil, d.serverAddr)
 	if err != nil {
 		d.logf("dial server err:%v", err)
@@ -167,7 +170,7 @@ func (d *DataConn) do(ack bool) {
 			d.logf("server request close connection")
 			break
 		} else if frame.Class() == bsc.NEW_CO {
-			go NewDataConn(d.serverAddr, d.targetAddr, d.token, d.nodelay, d.debug, d.exit).do(true)
+			go NewDataConn(d.serverAddr, d.targetAddr, d.token, d.nodelay, d.debug, d.connMonitor).do(true)
 		} else if frame.Class() == bsc.PING {
 			_, err := bsc.NewFrameWriter(d.conn).WriteUnPackFrame(bsc.PONG, 0, bsc.NO_PAYLOAD)
 			if err != nil {
