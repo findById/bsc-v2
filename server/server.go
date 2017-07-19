@@ -50,7 +50,6 @@ func (this *ProxyServer) Start(dataPort, userPort string) {
 	go func() {
 		for range ticker.C {
 			log.Printf("monitor >> CPU:%d, Goroutine:%d, Client:%d, ProxyClient:%d\n", runtime.NumCPU(), runtime.NumGoroutine(), this.cm.Size(), this.pcm.Size())
-			runtime.GC()
 		}
 	}()
 }
