@@ -67,6 +67,7 @@ func (this *TransportHandler) ReadPacket() {
 			this.cm.AddClient(this.client)
 
 			this.client.OutChan <- core.NewFrame(core.AUTH_ACK, 0, []byte{0})
+		case core.NEW_CO_ACK: // 客户端连接确认, 不处理
 		case core.DATA: // 数据传输
 			if !this.client.IsAuthed {
 				if this.cm.Size() > 1 {
@@ -75,19 +76,19 @@ func (this *TransportHandler) ReadPacket() {
 				return
 			}
 			cId := f.Channel()
-			// 查找是否存在当前channelId的连接，如果没有告诉客户端关闭数据通道
-			c := this.pcm.GetProxyClientByChannelId(cId, this.client.Id)
-			if c == nil {
-				// 通知客户端关闭当前数据通道
+			// 查找是否存在当前channelId的连接, 如果没有或已关闭, 告诉客户端关闭数据通道
+			pc := this.pcm.GetProxyClientByChannelId(cId, this.client.Id)
+			if pc == nil || pc.IsClosed {
 				if this.debug {
 					log.Println("not found channel id", cId)
 				}
+				// 通知客户端关闭当前数据通道
 				this.client.OutChan <- core.NewFrame(core.CLOSE_CH, cId, core.NO_PAYLOAD)
 				continue
 			}
 			// 把数据处理权交给对应channelId的用户连接
 			//log.Printf("write data %v, %v", c.Id, len(f.Payload()))
-			c.OutChan <- f
+			pc.OutChan <- f
 		case core.CLOSE_CH: // 客户端发起的关闭通道请求
 			if !this.client.IsAuthed {
 				if this.cm.Size() > 1 {
@@ -107,6 +108,7 @@ func (this *TransportHandler) ReadPacket() {
 				}
 				return
 			}
+			// 释放通道占用
 			this.client.RemoveChannelId(f.Channel())
 		case core.CLOSE_CO: // 客户端发起的关闭连接请求
 			if !this.client.IsAuthed {
@@ -122,6 +124,10 @@ func (this *TransportHandler) ReadPacket() {
 			if pc != nil {
 				this.pcm.RemoveClient(pc.Id)
 			}
+		case core.PING:
+		case core.PONG:
+		default:
+			log.Printf("unsupported type '%v' \n", f.Class())
 		}
 	}
 }

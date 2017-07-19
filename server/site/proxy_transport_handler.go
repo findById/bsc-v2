@@ -86,6 +86,8 @@ func (this *SiteTransportHandler) WritePacket() {
 					this.pc.Conn.Write(data.Payload())
 				}
 				this.pcm.RemoveClient(this.pc.Id)
+				// 响应释放通道成功
+				this.c.OutChan <- core.NewFrame(core.CLOSE_CH_ACK, this.pc.ChannelId, core.NO_PAYLOAD)
 			}
 		case data := <-this.pc.CloseChan:
 			if data == TYPE_CLOSE {
