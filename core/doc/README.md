@@ -4,8 +4,8 @@
 
 |长度 |类型|通道Id|载体|
 |:----:|:----:|:----:|:----:|
-|Length (uint32)|Type (uint8)|ChannelId (uint8)|Payload ([]byte)|
-|uint32|uint8|uint8|...|
+|Length (uint32)|Type (uint8)|ChannelId (uint64)|Payload ([]byte)|
+|uint32|uint8|uint64|...|
 
 ### Type
 |KEY |VALUE|DESC|Format|
