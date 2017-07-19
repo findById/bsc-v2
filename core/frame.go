@@ -34,7 +34,7 @@ const (
 var NO_PAYLOAD = []byte{}
 var AUTH_SUCCESS = []byte{0}
 var AUTH_FAILED = []byte{1}
-var P_H_L = 13
+var P_H_L = uint32(13)
 
 type Frame []byte
 
