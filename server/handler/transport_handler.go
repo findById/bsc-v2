@@ -58,15 +58,15 @@ func (this *TransportHandler) ReadPacket() {
 			b := base64.StdEncoding.EncodeToString(f.Payload())
 			if b != this.cm.AuthToken {
 				// 认证失败
-				this.client.OutChan <- core.NewFrame(core.AUTH_ACK, 0, []byte{1})
-				this.client.Close()
+				this.client.OutChan <- core.NewFrame(core.AUTH_ACK, 0, core.AUTH_FAILED)
+				//this.client.Close()
 				return
 			}
 			// 认证成功, 添加到活动连接库
 			this.client.IsAuthed = true
 			this.cm.AddClient(this.client)
 
-			this.client.OutChan <- core.NewFrame(core.AUTH_ACK, 0, []byte{0})
+			this.client.OutChan <- core.NewFrame(core.AUTH_ACK, 0, core.AUTH_SUCCESS)
 			log.Printf("client conn working >> cId:%v\n", this.client.Id)
 		case core.NEW_CO_ACK: // 客户端连接确认, 不处理
 		case core.DATA: // 数据传输
@@ -150,6 +150,11 @@ func (this *TransportHandler) WritePacket() {
 		// 如果是关闭连接消息，发送后主动关掉连接
 			if data.Class() == core.CLOSE_CO {
 				this.cm.RemoveClient(this.client.Id)
+			}
+		// 如果是验证失败消息，写出后关闭连接
+			if data.Class() == core.AUTH_ACK && data.Size() > 6 && data.Payload()[0] == core.AUTH_FAILED[0] {
+				this.client.Close()
+				break
 			}
 		case data := <-this.client.CloseChan:
 			if data == client.TYPE_CLOSE {
