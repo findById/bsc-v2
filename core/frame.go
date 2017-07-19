@@ -45,20 +45,20 @@ func (f Frame) Class() uint8 {
 	return f[4]
 }
 
-func (f Frame) Channel() uint8 {
-	return f[5]
+func (f Frame) Channel() uint64 {
+	return binary.BigEndian.Uint64(f[5:])
 }
 
 func (f Frame) Payload() []byte {
-	return f[6:]
+	return f[13:]
 }
 
-func NewFrame(class, channel uint8, payload []byte) (f Frame) {
-	f = make(Frame, 6+len(payload))
-	f[5] = channel
+func NewFrame(class uint8, channel uint64, payload []byte) (f Frame) {
+	f = make(Frame, 13+len(payload))
 	f[4] = class
 	binary.BigEndian.PutUint32(f, uint32(len(f)))
-	copy(f[6:], payload)
+	binary.BigEndian.PutUint64(f[5:], channel)
+	copy(f[13:], payload)
 	return
 }
 
@@ -87,7 +87,7 @@ func (fr *FrameReader) Read() (f Frame, err error) {
 
 type FrameWriter struct {
 	Writer  io.Writer
-	Channel uint8
+	Channel uint64
 	Class   uint8
 }
 
@@ -95,7 +95,7 @@ func NewFrameWriter(w io.Writer) *FrameWriter {
 	return &FrameWriter{Writer: w}
 }
 
-func (fw *FrameWriter) WriteUnPackFrame(class, channel uint8, payload []byte) (n int, err error) {
+func (fw *FrameWriter) WriteUnPackFrame(class uint8, channel uint64, payload []byte) (n int, err error) {
 	frame := NewFrame(class, channel, payload)
 	return fw.Writer.Write(frame)
 }
