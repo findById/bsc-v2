@@ -6,10 +6,10 @@
 	"Debug":true,
 	"Nodelay":true,
 	"Proxies":[{
-		"Server":"127.0.0.1:9092",
+		"Server":"192.168.99.123:9092",
 		"Target":"127.0.0.1:80",
-		"User":"",
-		"Password":""
+		"User":"admin",
+		"Password":"admin"
 		}
 	]
 }

@@ -70,16 +70,16 @@ func NewFrameReader(r io.Reader) *FrameReader {
 	return &FrameReader{Reader: r}
 }
 func (fr *FrameReader) Read() (f Frame, err error) {
-	f = make(Frame, 6)
+	f = make(Frame, 13)
 	_, err = io.ReadFull(fr.Reader, f)
 	if err != nil {
 		return
 	}
-	payloadSize := f.Size() - 6
+	payloadSize := f.Size() - 13
 	if payloadSize > 0 {
 		xf := make(Frame, f.Size())
 		copy(xf, f)
-		_, err = io.ReadFull(fr.Reader, xf[6:])
+		_, err = io.ReadFull(fr.Reader, xf[13:])
 		return xf, err
 	}
 	return
