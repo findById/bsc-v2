@@ -34,7 +34,9 @@ func (this *SiteTransportHandler) ReadPacket() {
 	for this.pc != nil && !this.pc.IsClosed {
 		n, err := this.pc.Conn.Read(buf)
 		//log.Printf("proxy read data >> %v", buf[:n])
-		log.Printf("proxy read data >> %v", n)
+		if this.debug {
+			log.Printf("proxy read data >> %v", n)
+		}
 		// 如果有读到数据，将数据交给客户端连接处理
 		if n > 0 {
 			data := core.NewFrame(core.DATA, this.pc.ChannelId, buf[:n])
@@ -73,7 +75,9 @@ func (this *SiteTransportHandler) WritePacket() {
 		select {
 		case data := <-this.pc.OutChan:
 		//log.Printf("proxy write data >> %v", data.Payload())
-			log.Printf("proxy read data >> %v", len(data.Payload()))
+			if this.debug {
+				log.Printf("proxy read data >> %v", data.Size() - 6)
+			}
 			switch data.Class() {
 			case core.DATA:
 				_, err := this.pc.Conn.Write(data.Payload())

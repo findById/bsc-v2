@@ -46,7 +46,7 @@ func (this *ProxyServer) Start(dataPort, userPort string) {
 		log.Panic(err)
 		return
 	}
-	ticker := time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(time.Minute)
 	go func() {
 		for range ticker.C {
 			log.Printf("monitor >> CPU:%d, Goroutine:%d, Client:%d, ProxyClient:%d\n", runtime.NumCPU(), runtime.NumGoroutine(), this.cm.Size(), this.pcm.Size())
@@ -118,7 +118,7 @@ func (this *ProxyServer) listenUserPort(addr string) (err error) {
 处理用户端发起的请求
  */
 func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
-	log.Println("handle proxy conn:", conn.RemoteAddr().String(), "Goroutine:", runtime.NumGoroutine())
+	log.Println("handle user conn:", conn.RemoteAddr().String(), "Goroutine:", runtime.NumGoroutine())
 
 	pc := site.NewProxyClient(conn)
 	var c *client.Client
@@ -175,7 +175,7 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 		}
 	}
 
-	log.Printf("working >> cId:%s, pcId:%s, chId:%v\n", c.Id, pc.Id, pc.ChannelId)
+	log.Printf("user conn working >> cId:%s, pcId:%s, chId:%v\n", c.Id, pc.Id, pc.ChannelId)
 	h := site.NewSiteHandler(c, this.cm, pc, this.pcm, this.debug)
 	h.Start()
 }

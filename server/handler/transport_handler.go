@@ -49,7 +49,7 @@ func (this *TransportHandler) ReadPacket() {
 			}
 			return
 		}
-		if this.debug && f.Class() != core.DATA {
+		if this.debug {
 			log.Printf("client read data >> cId:%s, chId:%d, t:%s, len:%v \n", this.client.Id, int(f.Channel()), core.RN[int(f.Class())], f.Size())
 		}
 		switch f.Class() {
@@ -67,6 +67,7 @@ func (this *TransportHandler) ReadPacket() {
 			this.cm.AddClient(this.client)
 
 			this.client.OutChan <- core.NewFrame(core.AUTH_ACK, 0, []byte{0})
+			log.Printf("client conn working >> cId:%v\n", this.client.Id)
 		case core.NEW_CO_ACK: // 客户端连接确认, 不处理
 		case core.DATA: // 数据传输
 			if !this.client.IsAuthed {
