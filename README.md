@@ -18,7 +18,7 @@ TCP代理
     ├── client            客户端实现
     └── server            服务端实现
         ├── main.go           启动入口
-        ├── server.go         核心入口
+        ├── server.go         端口监听服务
         ├── client            代理客户端管理
         ├── handler           代理客户端处理器
-        └── site              对外连接管理
+        └── site              TCP客户端管理
