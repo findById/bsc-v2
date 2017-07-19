@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io"
 	"log"
 	"net"
@@ -10,8 +11,9 @@ import (
 )
 
 var (
-	atlk  = sync.RWMutex{}
-	idGen = int64(0)
+	atlk       = sync.RWMutex{}
+	idGen      = int64(0)
+	AUTH_FAILD = errors.New("auth failed")
 )
 
 func nextId() int64 {
@@ -28,30 +30,31 @@ func getId() int64 {
 }
 
 type DataConn struct {
-	id          int64
-	token       []byte
-	targetAddr  *net.TCPAddr
-	serverAddr  *net.TCPAddr
-	conn        *net.TCPConn
-	targets     map[uint8]*net.TCPConn
-	reader      *bsc.FrameReader
-	connMonitor *chan (int)
-	lock        *sync.Mutex
-	debug       bool
-	nodelay     bool
+	id             int64
+	token          []byte
+	targetAddr     *net.TCPAddr
+	serverAddr     *net.TCPAddr
+	conn           *net.TCPConn
+	targets        map[uint8]*net.TCPConn
+	connMonitor    *chan (int)
+	channelMonitor *chan (int)
+	lock           *sync.Mutex
+	debug          bool
+	nodelay        bool
 }
 
-func NewDataConn(serverAddr, targetAddr *net.TCPAddr, token []byte, nodelay, debug bool, cm *chan (int)) *DataConn {
+func NewDataConn(serverAddr, targetAddr *net.TCPAddr, token []byte, nodelay, debug bool, cm, chm *chan (int)) *DataConn {
 	return &DataConn{
-		id:          nextId(),
-		token:       token,
-		debug:       debug,
-		nodelay:     nodelay,
-		targetAddr:  targetAddr,
-		serverAddr:  serverAddr,
-		connMonitor: cm,
-		targets:     make(map[uint8]*net.TCPConn),
-		lock:        &sync.Mutex{},
+		id:             nextId(),
+		token:          token,
+		debug:          debug,
+		nodelay:        nodelay,
+		targetAddr:     targetAddr,
+		serverAddr:     serverAddr,
+		connMonitor:    cm,
+		channelMonitor: chm,
+		targets:        make(map[uint8]*net.TCPConn),
+		lock:           &sync.Mutex{},
 	}
 }
 
@@ -63,10 +66,28 @@ func (d *DataConn) closeChannel(ch uint8, notify bool) {
 	}
 	d.logf("close channel %d", ch)
 	if conn, ok := d.targets[ch]; ok {
+		if d.channelMonitor != nil {
+			*d.channelMonitor <- -1
+		}
 		delete(d.targets, ch)
 		d.logf("close target conn %s", conn.LocalAddr().String())
 		conn.Close()
 	}
+}
+
+func (d *DataConn) findTarget(ch uint8) (conn *net.TCPConn, ok bool) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	if conn, ok = d.targets[ch]; ok {
+		return conn, ok
+	}
+	return nil, false
+}
+
+func (d *DataConn) putTargets(ch uint8, conn *net.TCPConn) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	d.targets[ch] = conn
 }
 
 func (d *DataConn) close() {
@@ -86,18 +107,7 @@ func (d *DataConn) close() {
 	}
 }
 
-func (d *DataConn) read() (f bsc.Frame, err error) {
-	return d.reader.Read()
-}
-func (d *DataConn) findTarget(ch uint8) (conn *net.TCPConn, ok bool) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-	if conn, ok = d.targets[ch]; ok {
-		return conn, ok
-	}
-	return nil, false
-}
-func (d *DataConn) do(ack bool) {
+func (d *DataConn) do(ack bool) (xerr error) {
 	defer func(cm *chan (int), id int64) {
 		if cm != nil {
 			*cm <- -1
@@ -128,9 +138,9 @@ func (d *DataConn) do(ack bool) {
 		}
 	}
 	d.conn = conn
-	d.reader = bsc.NewFrameReader(conn)
+	reader := bsc.NewFrameReader(conn)
 	for {
-		frame, err := d.read()
+		frame, err := reader.Read()
 		if err != nil {
 			d.logf("read server err:%v", err)
 			break
@@ -156,10 +166,10 @@ func (d *DataConn) do(ack bool) {
 		} else if frame.Class() == bsc.AUTH_ACK {
 			if frame.Payload()[0] != 0 {
 				d.logf("auth failed")
+				xerr = AUTH_FAILD
 				break
 			}
 		} else if frame.Class() == bsc.CLOSE_CH {
-			d.logf("server request close channel %d", frame.Channel())
 			d.closeChannel(frame.Channel(), false)
 			_, err := bsc.NewFrameWriter(d.conn).WriteUnPackFrame(bsc.CLOSE_CH_ACK, frame.Channel(), bsc.NO_PAYLOAD)
 			if err != nil {
@@ -170,7 +180,7 @@ func (d *DataConn) do(ack bool) {
 			d.logf("server request close connection")
 			break
 		} else if frame.Class() == bsc.NEW_CO {
-			go NewDataConn(d.serverAddr, d.targetAddr, d.token, d.nodelay, d.debug, d.connMonitor).do(true)
+			go NewDataConn(d.serverAddr, d.targetAddr, d.token, d.nodelay, d.debug, d.connMonitor, d.channelMonitor).do(true)
 		} else if frame.Class() == bsc.PING {
 			_, err := bsc.NewFrameWriter(d.conn).WriteUnPackFrame(bsc.PONG, 0, bsc.NO_PAYLOAD)
 			if err != nil {
@@ -179,9 +189,13 @@ func (d *DataConn) do(ack bool) {
 			}
 		}
 	}
+	return
 }
 
 func (d *DataConn) newChannel(ch uint8, payload []byte) {
+	if d.channelMonitor != nil {
+		*d.channelMonitor <- 1
+	}
 	d.logf("new channel %d ,with %d byte payload", ch, len(payload))
 	tConn, err := net.DialTCP("tcp", nil, d.targetAddr)
 	if err != nil {
@@ -202,12 +216,6 @@ func (d *DataConn) newChannel(ch uint8, payload []byte) {
 		d.logf("copy %d bytes, with err:%v", n, err)
 		d.closeChannel(ch, true)
 	}()
-}
-
-func (d *DataConn) putTargets(ch uint8, conn *net.TCPConn) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-	d.targets[ch] = conn
 }
 
 func (d *DataConn) logf(format string, v ...interface{}) {

@@ -75,16 +75,10 @@ func (fr *FrameReader) Read() (f Frame, err error) {
 	}
 	payloadSize := f.Size() - 6
 	if payloadSize > 0 {
-		payload := make([]byte, payloadSize)
-		_, err = io.ReadFull(fr.Reader, payload)
-		if err != nil {
-			return
-		}
-		xf := make(Frame, len(f))
+		xf := make(Frame, f.Size())
 		copy(xf, f)
-		f = make(Frame, xf.Size())
-		copy(f, xf)
-		copy(f[6:], payload)
+		_, err = io.ReadFull(fr.Reader, xf[6:])
+		return xf, err
 	}
 	return
 }

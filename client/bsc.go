@@ -35,8 +35,8 @@ var (
 	profile = flag.Bool("p", false, "start profile http server @:6060")
 	mode    = "c"
 
-	connMonitor = make(chan (int), 10)
-	channelChan = make(chan (int), 20)
+	connMonitor    = make(chan (int), 10)
+	channelMonitor = make(chan (int), 20)
 )
 
 func loadConfig() (c *Config, err error) {
@@ -73,7 +73,7 @@ func main() {
 			select {
 			case n = <-connMonitor:
 				aliveConn += n
-			case n = <-channelChan:
+			case n = <-channelMonitor:
 				aliveChannel += n
 			}
 		}
