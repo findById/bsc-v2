@@ -4,18 +4,18 @@ import "sync"
 
 type ClientManager struct {
 	AuthToken string
-	ConnMap   map[string]*Client
+	ConnMap   map[string]*ProxyClient
 	Lock      sync.RWMutex
 }
 
 func NewClientManager() *ClientManager {
 	cm := &ClientManager{
-		ConnMap: make(map[string]*Client),
+		ConnMap: make(map[string]*ProxyClient),
 	}
 	return cm
 }
 
-func (this *ClientManager) AddClient(client *Client) {
+func (this *ClientManager) AddClient(client *ProxyClient) {
 	this.Lock.Lock()
 	// defer this.Lock.Unlock();
 	c, ok := this.ConnMap[client.Id]
@@ -38,7 +38,7 @@ func (this *ClientManager) RemoveClient(id string) {
 	this.Lock.Unlock()
 }
 
-func (this *ClientManager) GetClient(id string) *Client {
+func (this *ClientManager) GetClient(id string) *ProxyClient {
 	this.Lock.RLock()
 	defer this.Lock.RUnlock()
 	return this.ConnMap[id]
@@ -48,12 +48,12 @@ func (this *ClientManager) Size() int {
 	return len(this.ConnMap)
 }
 
-func (this *ClientManager) CloneMap() []*Client {
+func (this *ClientManager) CloneMap() []*ProxyClient {
 	this.Lock.RLock()
 	// defer this.Lock.RUnlock();
 	closedIds := make([]string, 0)
 
-	clone := make([]*Client, len(this.ConnMap))
+	clone := make([]*ProxyClient, len(this.ConnMap))
 	i := 0
 	for _, v := range this.ConnMap {
 		if v == nil || v.IsClosed {

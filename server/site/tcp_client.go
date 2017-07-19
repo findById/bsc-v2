@@ -9,7 +9,7 @@ const (
 	TYPE_CLOSE = 1
 )
 
-type ProxyClient struct {
+type TcpClient struct {
 	Id        string       // 用户端连接Id
 	Conn      *net.TCPConn // 用户端连接
 
@@ -19,19 +19,19 @@ type ProxyClient struct {
 	OutChan   chan (core.Frame)
 	CloseChan chan (int)
 
-	ChannelId uint8        // 用户复用客户端连接的通道Id
+	ChannelId uint64        // 用户复用客户端连接的通道Id
 
 	IsClosed  bool
 }
 
-func (this *ProxyClient) Close() {
+func (this *TcpClient) Close() {
 	this.IsClosed = true
 	this.Conn.Close()
 	this.CloseChan <- TYPE_CLOSE
 }
 
-func NewProxyClient(conn *net.TCPConn) *ProxyClient {
-	return &ProxyClient{
+func NewTcpClient(conn *net.TCPConn) *TcpClient {
+	return &TcpClient{
 		Id:conn.RemoteAddr().String(),
 		Conn:conn,
 		InChan:make(chan (core.Frame), 10000),

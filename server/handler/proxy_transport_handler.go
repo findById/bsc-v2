@@ -12,17 +12,17 @@ import (
 
 type TransportHandler struct {
 	cm     *client.ClientManager
-	client *client.Client
-	pcm    *site.ProxyClientManager
+	client *client.ProxyClient
+	tcm    *site.ClientManager
 	debug  bool
 }
 
-func NewHandler(conn *net.TCPConn, cm *client.ClientManager, pcm *site.ProxyClientManager, debug bool) *TransportHandler {
-	client := client.NewClient(conn)
+func NewProxyHandler(conn *net.TCPConn, cm *client.ClientManager, tcm *site.ClientManager, debug bool) *TransportHandler {
+	client := client.NewProxyClient(conn)
 	return &TransportHandler{
-		cm:      cm,
-		client:  client,
-		pcm:pcm,
+		cm:cm,
+		client:client,
+		tcm:tcm,
 		debug:debug,
 	}
 }
@@ -78,8 +78,8 @@ func (this *TransportHandler) ReadPacket() {
 			}
 			cId := f.Channel()
 			// 查找是否存在当前channelId的连接, 如果没有或已关闭, 告诉客户端关闭数据通道
-			pc := this.pcm.GetProxyClientByChannelId(cId, this.client.Id)
-			if pc == nil || pc.IsClosed {
+			tc := this.tcm.GetTcpClientByChannelId(cId, this.client.Id)
+			if tc == nil || tc.IsClosed {
 				if this.debug {
 					log.Println("not found channel id", cId)
 				}
@@ -89,7 +89,7 @@ func (this *TransportHandler) ReadPacket() {
 			}
 			// 把数据处理权交给对应channelId的用户连接
 			//log.Printf("write data %v, %v", c.Id, len(f.Payload()))
-			pc.OutChan <- f
+			tc.OutChan <- f
 		case core.CLOSE_CH: // 客户端发起的关闭通道请求
 			if !this.client.IsAuthed {
 				if this.cm.Size() > 1 {
@@ -98,9 +98,9 @@ func (this *TransportHandler) ReadPacket() {
 				return
 			}
 			this.client.RemoveChannelId(f.Channel())
-			pc := this.pcm.GetProxyClientByChannelId(f.Channel(), this.client.Id)
-			if pc != nil {
-				pc.OutChan <- f
+			tc := this.tcm.GetTcpClientByChannelId(f.Channel(), this.client.Id)
+			if tc != nil {
+				tc.OutChan <- f
 			}
 		case core.CLOSE_CH_ACK: // 收到客户端关闭通道的回应后，释放通道
 			if !this.client.IsAuthed {
@@ -121,9 +121,9 @@ func (this *TransportHandler) ReadPacket() {
 			if this.cm.Size() > 1 {
 				this.cm.RemoveClient(this.client.Id)
 			}
-			pc := this.pcm.GetProxyClientByClientId(this.client.Id)
-			if pc != nil {
-				this.pcm.RemoveClient(pc.Id)
+			tc := this.tcm.GetTcpClientByClientId(this.client.Id)
+			if tc != nil {
+				this.tcm.RemoveClient(tc.Id)
 			}
 		case core.PING:
 		case core.PONG:
@@ -152,7 +152,7 @@ func (this *TransportHandler) WritePacket() {
 				this.cm.RemoveClient(this.client.Id)
 			}
 		// 如果是验证失败消息，写出后关闭连接
-			if data.Class() == core.AUTH_ACK && data.Size() > 6 && data.Payload()[0] == core.AUTH_FAILED[0] {
+			if data.Class() == core.AUTH_ACK && data.Size() > core.P_H_L && data.Payload()[0] == core.AUTH_FAILED[0] {
 				this.client.Close()
 				break
 			}

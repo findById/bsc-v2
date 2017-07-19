@@ -2,18 +2,18 @@ package site
 
 import "sync"
 
-type ProxyClientManager struct {
-	ConnMap map[string]*ProxyClient
+type ClientManager struct {
+	ConnMap map[string]*TcpClient
 	Lock    sync.RWMutex
 }
 
-func NewProxyClientManager() *ProxyClientManager {
-	return &ProxyClientManager{
-		ConnMap:make(map[string]*ProxyClient),
+func NewClientManager() *ClientManager {
+	return &ClientManager{
+		ConnMap:make(map[string]*TcpClient),
 	}
 }
 
-func (this *ProxyClientManager) Add(client *ProxyClient) {
+func (this *ClientManager) Add(client *TcpClient) {
 	this.Lock.Lock()
 	// defer this.Lock.Unlock();
 	c, ok := this.ConnMap[client.Id]
@@ -25,7 +25,7 @@ func (this *ProxyClientManager) Add(client *ProxyClient) {
 	this.Lock.Unlock()
 }
 
-func (this *ProxyClientManager) RemoveClient(id string) {
+func (this *ClientManager) RemoveClient(id string) {
 	this.Lock.Lock()
 	// defer this.Lock.Unlock();
 	c, ok := this.ConnMap[id]
@@ -36,7 +36,7 @@ func (this *ProxyClientManager) RemoveClient(id string) {
 	this.Lock.Unlock()
 }
 
-func (this *ProxyClientManager) GetProxyClientByChannelId(id uint8, cId string) *ProxyClient {
+func (this *ClientManager) GetTcpClientByChannelId(id uint64, cId string) *TcpClient {
 	for _, c := range this.CloneMap() {
 		if c != nil && !c.IsClosed && c.ChannelId == id && c.ClientId == cId {
 			return c
@@ -45,7 +45,7 @@ func (this *ProxyClientManager) GetProxyClientByChannelId(id uint8, cId string) 
 	return nil
 }
 
-func (this *ProxyClientManager) GetProxyClientByClientId(cId string) *ProxyClient {
+func (this *ClientManager) GetTcpClientByClientId(cId string) *TcpClient {
 	for _, c := range this.CloneMap() {
 		if c != nil && !c.IsClosed && c.ClientId == cId {
 			return c
@@ -54,22 +54,22 @@ func (this *ProxyClientManager) GetProxyClientByClientId(cId string) *ProxyClien
 	return nil
 }
 
-func (this *ProxyClientManager) GetClient(id string) *ProxyClient {
+func (this *ClientManager) GetClient(id string) *TcpClient {
 	this.Lock.RLock()
 	defer this.Lock.RUnlock()
 	return this.ConnMap[id]
 }
 
-func (this *ProxyClientManager) Size() int {
+func (this *ClientManager) Size() int {
 	return len(this.ConnMap)
 }
 
-func (this *ProxyClientManager) CloneMap() []*ProxyClient {
+func (this *ClientManager) CloneMap() []*TcpClient {
 	this.Lock.RLock()
 	// defer this.Lock.RUnlock();
 	closedIds := make([]string, 0)
 
-	clone := make([]*ProxyClient, len(this.ConnMap))
+	clone := make([]*TcpClient, len(this.ConnMap))
 	i := 0
 	for _, v := range this.ConnMap {
 		if v.IsClosed {
@@ -86,7 +86,7 @@ func (this *ProxyClientManager) CloneMap() []*ProxyClient {
 	return clone
 }
 
-func (this *ProxyClientManager) remove(ids []string) {
+func (this *ClientManager) remove(ids []string) {
 	this.Lock.Lock()
 	for _, id := range ids {
 		c, ok := this.ConnMap[id]

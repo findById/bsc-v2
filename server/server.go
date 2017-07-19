@@ -15,20 +15,20 @@ const CHANNEL_SIZE int = 100
 
 type ProxyServer struct {
 	cm       *client.ClientManager
-	pcm      *site.ProxyClientManager
+	tcm      *site.ClientManager
 	listener *net.TCPListener
 	debug    bool
 }
 
 func NewProxyServer(token string, debug bool) *ProxyServer {
 	cm := client.NewClientManager()
-	pcm := site.NewProxyClientManager()
+	tcm := site.NewClientManager()
 
 	cm.AuthToken = token
 
 	return &ProxyServer{
 		cm: cm,
-		pcm:pcm,
+		tcm:tcm,
 		debug:debug,
 	}
 }
@@ -49,7 +49,7 @@ func (this *ProxyServer) Start(dataPort, userPort string) {
 	ticker := time.NewTicker(time.Minute)
 	go func() {
 		for range ticker.C {
-			log.Printf("monitor >> CPU:%d, Goroutine:%d, Client:%d, ProxyClient:%d\n", runtime.NumCPU(), runtime.NumGoroutine(), this.cm.Size(), this.pcm.Size())
+			log.Printf("monitor >> CPU:%d, Goroutine:%d, Client:%d, ProxyClient:%d\n", runtime.NumCPU(), runtime.NumGoroutine(), this.cm.Size(), this.tcm.Size())
 		}
 	}()
 }
@@ -85,7 +85,7 @@ func (this *ProxyServer) listenDataPort(addr string) (err error) {
  */
 func (this *ProxyServer) handleDataConnection(conn *net.TCPConn) {
 	log.Println("handle data conn:", conn.RemoteAddr().String(), "Goroutine:", runtime.NumGoroutine())
-	h := handler.NewHandler(conn, this.cm, this.pcm, this.debug)
+	h := handler.NewProxyHandler(conn, this.cm, this.tcm, this.debug)
 	h.Start()
 }
 
@@ -119,11 +119,11 @@ func (this *ProxyServer) listenUserPort(addr string) (err error) {
 func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 	log.Println("handle user conn:", conn.RemoteAddr().String(), "Goroutine:", runtime.NumGoroutine())
 
-	pc := site.NewProxyClient(conn)
-	var c *client.Client
+	tc := site.NewTcpClient(conn)
+	var pc *client.ProxyClient
 
 	// 查找可用连接通道
-	client, success := this.searchConn(pc)
+	client, success := this.searchConn(tc)
 	if !success {
 		// 没有找到空闲连接，发起通知客户端打开新连接
 		// 没有找到空闲连接或连接已关闭, 代理客户端无法提供服务
@@ -131,7 +131,7 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 			if this.debug {
 				log.Println("not found connect")
 			}
-			pc.Close()
+			tc.Close()
 			return
 		}
 		// 告诉客户端打开新的连接接收数据
@@ -146,36 +146,36 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 		work: // 等待客户端发起可用连接，10秒超时
 		for now := int64(0); (now - beginTime) < 10; now = time.Now().Unix() {
 			// 等待客户端连接
-			client, success := this.searchConn(pc)
+			client, success := this.searchConn(tc)
 			if success {
-				c = client
+				pc = client
 				break work
 			}
 		}
 	} else {
-		c = client
+		pc = client
 	}
 
-	if c == nil {
+	if pc == nil {
 		if this.debug {
 			log.Println("not found connect")
 		}
-		pc.Close()
+		tc.Close()
 		return
 	}
 
 	// 如该当前与客户端的连接大于1个，寻找空闲的连接并通知客户端关闭 (设计重复,待优化 proxy_transport_handler.go)
 	if len(this.cm.CloneMap()) > 1 {
 		for _, v := range this.cm.CloneMap() {
-			if v != c && c.ChannelIdSize() < 1 {
-				data := core.NewFrame(core.CLOSE_CO, pc.ChannelId, core.NO_PAYLOAD)
+			if v != pc && pc.ChannelIdSize() < 1 {
+				data := core.NewFrame(core.CLOSE_CO, tc.ChannelId, core.NO_PAYLOAD)
 				v.OutChan <- data
 			}
 		}
 	}
 
-	log.Printf("user conn working >> cId:%s, pcId:%s, chId:%v\n", c.Id, pc.Id, pc.ChannelId)
-	h := site.NewSiteHandler(c, this.cm, pc, this.pcm, this.debug)
+	log.Printf("user conn working >> pcId:%s, tcId:%s, chId:%v\n", pc.Id, tc.Id, tc.ChannelId)
+	h := site.NewSiteHandler(pc, this.cm, tc, this.tcm, this.debug)
 	h.Start()
 }
 
@@ -184,20 +184,20 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 2. 如果有代理客户端连接并且连接压力不大， 返回 conn, true
 3. 如果有代理客户端连接，但是没有空闲连接，返回 conn, false
  */
-func (this *ProxyServer) searchConn(pc *site.ProxyClient) (*client.Client, bool) {
-	var c *client.Client
+func (this *ProxyServer) searchConn(tc *site.TcpClient) (*client.ProxyClient, bool) {
+	var pc *client.ProxyClient
 	for _, conn := range this.cm.CloneMap() {
 		if conn == nil || conn.IsClosed {
 			continue
 		}
-		c = conn // 复用当前可用连接
+		pc = conn // 复用当前可用连接
 		if conn.ChannelIdSize() < CHANNEL_SIZE {
-			pc.ChannelId = conn.NewChannelId()
-			pc.ClientId = conn.Id
-			this.pcm.Add(pc)
+			tc.ChannelId = conn.NewChannelId()
+			tc.ClientId = conn.Id
+			this.tcm.Add(tc)
 			//log.Println("new channel id", pc.ChannelId)
-			return c, true
+			return pc, true
 		}
 	}
-	return c, false
+	return pc, false
 }
