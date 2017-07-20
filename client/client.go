@@ -28,7 +28,7 @@ func newProxy(wg *sync.WaitGroup, p *Proxy, debug, noDelay bool, retry, interval
 				log.Println("[G] START PROXY:", targetAddr.String(), "->", serverAddr.String())
 				err := NewDataConn(serverAddr, targetAddr, authToken, noDelay, debug, &connMonitor, &channelMonitor).do(false)
 				log.Println("[G] PROXY JOB DONE.")
-				if err == AUTH_FAILD {
+				if err == ErrAuth {
 					break
 				}
 			}

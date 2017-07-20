@@ -11,19 +11,19 @@ import (
 )
 
 var (
-	atlk       = sync.RWMutex{}
-	idGen      = int64(0)
-	AUTH_FAILD = errors.New("auth failed")
+	atlk    = sync.RWMutex{}
+	idGen   = int64(0)
+	ErrAuth = errors.New("auth failed") //auth failed
 )
 
-func nextId() int64 {
+func nextID() int64 {
 	atlk.Lock()
 	defer atlk.Unlock()
 	idGen++
 	return idGen
 }
 
-func getId() int64 {
+func getID() int64 {
 	atlk.RLock()
 	defer atlk.RUnlock()
 	return idGen
@@ -45,7 +45,7 @@ type DataConn struct {
 
 func NewDataConn(serverAddr, targetAddr *net.TCPAddr, token []byte, nodelay, debug bool, cm, chm *chan (int)) *DataConn {
 	return &DataConn{
-		id:             nextId(),
+		id:             nextID(),
 		token:          token,
 		debug:          debug,
 		nodelay:        nodelay,
@@ -97,13 +97,11 @@ func (d *DataConn) close() {
 		d.logf("close data conn %s", d.conn.LocalAddr().String())
 		d.conn.Close()
 	}
-	for ch, _ := range d.targets {
+	for ch, conn := range d.targets {
 		d.logf("close channel %d", ch)
-		if conn, ok := d.targets[ch]; ok {
-			delete(d.targets, ch)
-			d.logf("close target conn %s", conn.LocalAddr().String())
-			conn.Close()
-		}
+		delete(d.targets, ch)
+		d.logf("close target conn %s", conn.LocalAddr().String())
+		conn.Close()
 	}
 }
 
@@ -166,7 +164,7 @@ func (d *DataConn) do(ack bool) (xerr error) {
 		} else if frame.Class() == bsc.AUTH_ACK {
 			if frame.Payload()[0] != 0 {
 				d.logf("auth failed")
-				xerr = AUTH_FAILD
+				xerr = ErrAuth
 				break
 			}
 		} else if frame.Class() == bsc.CLOSE_CH {
@@ -206,16 +204,14 @@ func (d *DataConn) newChannel(ch uint32, payload []byte) {
 	tConn.SetNoDelay(true)
 	d.putTargets(ch, tConn)
 	tConn.Write(payload)
-	go func() {
-		n, err := io.Copy(
-			&bsc.FrameWriter{
-				Channel: ch,
-				Class:   bsc.DATA,
-				Writer:  d.conn},
-			tConn)
-		d.logf("copy %d bytes, with err:%v", n, err)
-		d.closeChannel(ch, true)
-	}()
+	n, err := io.Copy(
+		&bsc.FrameWriter{
+			Channel: ch,
+			Class:   bsc.DATA,
+			Writer:  d.conn},
+		tConn)
+	d.logf("copy %d bytes, with err:%v", n, err)
+	d.closeChannel(ch, true)
 }
 
 func (d *DataConn) logf(format string, v ...interface{}) {
