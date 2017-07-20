@@ -1,13 +1,13 @@
 package handler
 
 import (
-	"bsc-v2/server/client"
-	"net"
 	"bsc-v2/core"
+	"bsc-v2/server/client"
 	"bsc-v2/server/site"
+	"encoding/base64"
 	"io"
 	"log"
-	"encoding/base64"
+	"net"
 )
 
 type TransportHandler struct {
@@ -20,10 +20,10 @@ type TransportHandler struct {
 func NewProxyHandler(conn *net.TCPConn, cm *client.ClientManager, tcm *site.ClientManager, debug bool) *TransportHandler {
 	client := client.NewProxyClient(conn)
 	return &TransportHandler{
-		cm:cm,
-		client:client,
-		tcm:tcm,
-		debug:debug,
+		cm:     cm,
+		client: client,
+		tcm:    tcm,
+		debug:  debug,
 	}
 }
 
@@ -147,12 +147,12 @@ func (this *TransportHandler) WritePacket() {
 				this.cm.RemoveClient(this.client.Id)
 				return
 			}
-		// 如果是关闭连接消息，发送后主动关掉连接
+			// 如果是关闭连接消息，发送后主动关掉连接
 			if data.Class() == core.CLOSE_CO {
 				this.cm.RemoveClient(this.client.Id)
 			}
-		// 如果是验证失败消息，写出后关闭连接
-			if data.Class() == core.AUTH_ACK && data.Size() > core.P_H_L && data.Payload()[0] == core.AUTH_FAILED[0] {
+			// 如果是验证失败消息，写出后关闭连接
+			if data.Class() == core.AUTH_ACK && data.Size() > core.FHL && data.Payload()[0] == core.AUTH_FAILED[0] {
 				this.client.Close()
 				break
 			}

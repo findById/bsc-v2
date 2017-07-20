@@ -1,14 +1,14 @@
 package main
 
 import (
+	"bsc-v2/core"
 	"bsc-v2/server/client"
-	"net"
-	"log"
 	"bsc-v2/server/handler"
 	"bsc-v2/server/site"
-	"time"
-	"bsc-v2/core"
+	"log"
+	"net"
 	"runtime"
+	"time"
 )
 
 const CHANNEL_SIZE int = 100
@@ -27,9 +27,9 @@ func NewProxyServer(token string, debug bool) *ProxyServer {
 	cm.AuthToken = token
 
 	return &ProxyServer{
-		cm: cm,
-		tcm:tcm,
-		debug:debug,
+		cm:    cm,
+		tcm:   tcm,
+		debug: debug,
 	}
 }
 
@@ -56,7 +56,7 @@ func (this *ProxyServer) Start(dataPort, userPort string) {
 
 /**
 接收客户端发起的连接
- */
+*/
 func (this *ProxyServer) listenDataPort(addr string) (err error) {
 	laddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
@@ -82,7 +82,7 @@ func (this *ProxyServer) listenDataPort(addr string) (err error) {
 
 /**
 处理客户端发起的连接 (数据传输)
- */
+*/
 func (this *ProxyServer) handleDataConnection(conn *net.TCPConn) {
 	log.Println("handle data conn:", conn.RemoteAddr().String(), "Goroutine:", runtime.NumGoroutine())
 	h := handler.NewProxyHandler(conn, this.cm, this.tcm, this.debug)
@@ -91,7 +91,7 @@ func (this *ProxyServer) handleDataConnection(conn *net.TCPConn) {
 
 /**
 接收用户端发起的请求连接
- */
+*/
 func (this *ProxyServer) listenUserPort(addr string) (err error) {
 	laddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
@@ -115,7 +115,7 @@ func (this *ProxyServer) listenUserPort(addr string) (err error) {
 
 /**
 处理用户端发起的请求
- */
+*/
 func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 	log.Println("handle user conn:", conn.RemoteAddr().String(), "Goroutine:", runtime.NumGoroutine())
 
@@ -143,7 +143,7 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 
 		// 等待客户端打开新连接，10秒超时
 		beginTime := time.Now().Unix()
-		work: // 等待客户端发起可用连接，10秒超时
+	work: // 等待客户端发起可用连接，10秒超时
 		for now := int64(0); (now - beginTime) < 10; now = time.Now().Unix() {
 			// 等待客户端连接
 			client, success := this.searchConn(tc)
@@ -183,7 +183,7 @@ func (this *ProxyServer) handleUserConnection(conn *net.TCPConn) {
 1. 如果没有代理客户端连接，返回 nil, false
 2. 如果有代理客户端连接并且连接压力不大， 返回 conn, true
 3. 如果有代理客户端连接，但是没有空闲连接，返回 conn, false
- */
+*/
 func (this *ProxyServer) searchConn(tc *site.TcpClient) (*client.ProxyClient, bool) {
 	var pc *client.ProxyClient
 	for _, conn := range this.cm.CloneMap() {
@@ -192,7 +192,7 @@ func (this *ProxyServer) searchConn(tc *site.TcpClient) (*client.ProxyClient, bo
 		}
 		pc = conn // 复用当前可用连接
 		if conn.ChannelIdSize() < CHANNEL_SIZE {
-			tc.ChannelId = conn.NewChannelId()
+			tc.ChannelId = conn.NewChannelId(tc.Id)
 			tc.ClientId = conn.Id
 			this.tcm.Add(tc)
 			//log.Println("new channel id", pc.ChannelId)

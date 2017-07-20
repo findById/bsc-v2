@@ -35,7 +35,7 @@ type DataConn struct {
 	targetAddr     *net.TCPAddr
 	serverAddr     *net.TCPAddr
 	conn           *net.TCPConn
-	targets        map[uint64]*net.TCPConn
+	targets        map[uint32]*net.TCPConn
 	connMonitor    *chan (int)
 	channelMonitor *chan (int)
 	lock           *sync.Mutex
@@ -53,16 +53,16 @@ func NewDataConn(serverAddr, targetAddr *net.TCPAddr, token []byte, nodelay, deb
 		serverAddr:     serverAddr,
 		connMonitor:    cm,
 		channelMonitor: chm,
-		targets:        make(map[uint64]*net.TCPConn),
+		targets:        make(map[uint32]*net.TCPConn),
 		lock:           &sync.Mutex{},
 	}
 }
 
-func (d *DataConn) closeChannel(ch uint64, notify bool) {
+func (d *DataConn) closeChannel(ch uint32, notify bool) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	if notify {
-		bsc.NewFrameWriter(d.conn).WriteUnPackFrame(bsc.CLOSE_CH, ch, bsc.NO_PAYLOAD)
+		bsc.NewFrameWriter(d.conn).WriteUnPackFrame(bsc.CLOSE_CH, uint32(ch), bsc.NO_PAYLOAD)
 	}
 	d.logf("close channel %d", ch)
 	if conn, ok := d.targets[ch]; ok {
@@ -75,7 +75,7 @@ func (d *DataConn) closeChannel(ch uint64, notify bool) {
 	}
 }
 
-func (d *DataConn) findTarget(ch uint64) (conn *net.TCPConn, ok bool) {
+func (d *DataConn) findTarget(ch uint32) (conn *net.TCPConn, ok bool) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	if conn, ok = d.targets[ch]; ok {
@@ -84,7 +84,7 @@ func (d *DataConn) findTarget(ch uint64) (conn *net.TCPConn, ok bool) {
 	return nil, false
 }
 
-func (d *DataConn) putTargets(ch uint64, conn *net.TCPConn) {
+func (d *DataConn) putTargets(ch uint32, conn *net.TCPConn) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	d.targets[ch] = conn
@@ -192,7 +192,7 @@ func (d *DataConn) do(ack bool) (xerr error) {
 	return
 }
 
-func (d *DataConn) newChannel(ch uint64, payload []byte) {
+func (d *DataConn) newChannel(ch uint32, payload []byte) {
 	if d.channelMonitor != nil {
 		*d.channelMonitor <- 1
 	}

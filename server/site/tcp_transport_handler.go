@@ -2,25 +2,25 @@ package site
 
 import (
 	"bsc-v2/core"
-	"log"
 	"bsc-v2/server/client"
+	"log"
 )
 
 type TransportHandler struct {
 	pc    *client.ProxyClient   // 代理客户端
 	tc    *TcpClient            // 用户访问端
 	cm    *client.ClientManager // 客户端连接管理
-	tcm   *ClientManager     // 用户端连接管理
+	tcm   *ClientManager        // 用户端连接管理
 	debug bool
 }
 
 func NewSiteHandler(pc *client.ProxyClient, cm *client.ClientManager, tc *TcpClient, tcm *ClientManager, debug bool) *TransportHandler {
 	return &TransportHandler{
-		pc:pc,
-		cm:cm,
-		tc:  tc,
-		tcm:tcm,
-		debug:debug,
+		pc:    pc,
+		cm:    cm,
+		tc:    tc,
+		tcm:   tcm,
+		debug: debug,
 	}
 }
 
@@ -30,7 +30,7 @@ func (this *TransportHandler) Start() {
 }
 
 func (this *TransportHandler) ReadPacket() {
-	buf := make([]byte, 1024 * 8)
+	buf := make([]byte, 1024*8)
 	for this.tc != nil && !this.tc.IsClosed {
 		n, err := this.tc.Conn.Read(buf)
 		//log.Printf("proxy read data >> %v", buf[:n])
@@ -74,9 +74,9 @@ func (this *TransportHandler) WritePacket() {
 	for this.tc != nil && !this.tc.IsClosed {
 		select {
 		case data := <-this.tc.OutChan:
-		//log.Printf("proxy write data >> %v", data.Payload())
+			//log.Printf("proxy write data >> %v", data.Payload())
 			if this.debug {
-				log.Printf("proxy read data >> %v", data.Size() - 6)
+				log.Printf("proxy read data >> %v", data.Size()-core.FHL)
 			}
 			switch data.Class() {
 			case core.DATA:
@@ -86,7 +86,7 @@ func (this *TransportHandler) WritePacket() {
 					return
 				}
 			case core.CLOSE_CH:
-				if data.Size() > core.P_H_L {
+				if data.Size() > core.FHL {
 					this.tc.Conn.Write(data.Payload())
 				}
 				this.tcm.RemoveClient(this.tc.Id)

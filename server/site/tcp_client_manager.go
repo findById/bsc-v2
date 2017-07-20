@@ -9,7 +9,7 @@ type ClientManager struct {
 
 func NewClientManager() *ClientManager {
 	return &ClientManager{
-		ConnMap:make(map[string]*TcpClient),
+		ConnMap: make(map[string]*TcpClient),
 	}
 }
 
@@ -36,7 +36,7 @@ func (this *ClientManager) RemoveClient(id string) {
 	this.Lock.Unlock()
 }
 
-func (this *ClientManager) GetTcpClientByChannelId(id uint64, cId string) *TcpClient {
+func (this *ClientManager) GetTcpClientByChannelId(id uint32, cId string) *TcpClient {
 	for _, c := range this.CloneMap() {
 		if c != nil && !c.IsClosed && c.ChannelId == id && c.ClientId == cId {
 			return c

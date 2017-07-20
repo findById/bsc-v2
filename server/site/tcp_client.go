@@ -1,8 +1,8 @@
 package site
 
 import (
-	"net"
 	"bsc-v2/core"
+	"net"
 )
 
 const (
@@ -10,18 +10,18 @@ const (
 )
 
 type TcpClient struct {
-	Id        string       // 用户端连接Id
-	Conn      *net.TCPConn // 用户端连接
+	Id   string       // 用户端连接Id
+	Conn *net.TCPConn // 用户端连接
 
-	ClientId  string       // 对应用户端的客户端连接Id
+	ClientId string // 对应用户端的客户端连接Id
 
 	InChan    chan (core.Frame)
 	OutChan   chan (core.Frame)
 	CloseChan chan (int)
 
-	ChannelId uint64        // 用户复用客户端连接的通道Id
+	ChannelId uint32 // 用户复用客户端连接的通道Id
 
-	IsClosed  bool
+	IsClosed bool
 }
 
 func (this *TcpClient) Close() {
@@ -32,11 +32,11 @@ func (this *TcpClient) Close() {
 
 func NewTcpClient(conn *net.TCPConn) *TcpClient {
 	return &TcpClient{
-		Id:conn.RemoteAddr().String(),
-		Conn:conn,
-		InChan:make(chan (core.Frame), 10000),
-		OutChan:make(chan (core.Frame), 10000),
-		CloseChan:make(chan (int), 100),
-		IsClosed:false,
+		Id:        conn.RemoteAddr().String(),
+		Conn:      conn,
+		InChan:    make(chan (core.Frame), 10000),
+		OutChan:   make(chan (core.Frame), 10000),
+		CloseChan: make(chan (int), 100),
+		IsClosed:  false,
 	}
 }

@@ -34,7 +34,15 @@ const (
 var NO_PAYLOAD = []byte{}
 var AUTH_SUCCESS = []byte{0}
 var AUTH_FAILED = []byte{1}
-var P_H_L = uint32(13)
+
+const (
+	FHL = uint32(4 + 1 + 4)
+	LI  = 0
+	LL  = 4
+	CI  = 4
+	CHI = 5
+	CHL = 4
+)
 
 type Frame []byte
 
@@ -43,23 +51,23 @@ func (f Frame) Size() uint32 {
 }
 
 func (f Frame) Class() uint8 {
-	return f[4]
+	return f[CI]
 }
 
-func (f Frame) Channel() uint64 {
-	return binary.BigEndian.Uint64(f[5:])
+func (f Frame) Channel() uint32 {
+	return binary.BigEndian.Uint32(f[CHI:])
 }
 
 func (f Frame) Payload() []byte {
-	return f[13:]
+	return f[FHL:]
 }
 
-func NewFrame(class uint8, channel uint64, payload []byte) (f Frame) {
-	f = make(Frame, 13+len(payload))
-	f[4] = class
+func NewFrame(class uint8, channel uint32, payload []byte) (f Frame) {
+	f = make(Frame, int(FHL)+len(payload))
+	f[CI] = class
 	binary.BigEndian.PutUint32(f, uint32(len(f)))
-	binary.BigEndian.PutUint64(f[5:], channel)
-	copy(f[13:], payload)
+	binary.BigEndian.PutUint32(f[CHI:], channel)
+	copy(f[FHL:], payload)
 	return
 }
 
@@ -71,16 +79,16 @@ func NewFrameReader(r io.Reader) *FrameReader {
 	return &FrameReader{Reader: r}
 }
 func (fr *FrameReader) Read() (f Frame, err error) {
-	f = make(Frame, 13)
+	f = make(Frame, FHL)
 	_, err = io.ReadFull(fr.Reader, f)
 	if err != nil {
 		return
 	}
-	payloadSize := f.Size() - 13
+	payloadSize := f.Size() - FHL
 	if payloadSize > 0 {
 		xf := make(Frame, f.Size())
 		copy(xf, f)
-		_, err = io.ReadFull(fr.Reader, xf[13:])
+		_, err = io.ReadFull(fr.Reader, xf[FHL:])
 		return xf, err
 	}
 	return
@@ -88,7 +96,7 @@ func (fr *FrameReader) Read() (f Frame, err error) {
 
 type FrameWriter struct {
 	Writer  io.Writer
-	Channel uint64
+	Channel uint32
 	Class   uint8
 }
 
@@ -96,7 +104,7 @@ func NewFrameWriter(w io.Writer) *FrameWriter {
 	return &FrameWriter{Writer: w}
 }
 
-func (fw *FrameWriter) WriteUnPackFrame(class uint8, channel uint64, payload []byte) (n int, err error) {
+func (fw *FrameWriter) WriteUnPackFrame(class uint8, channel uint32, payload []byte) (n int, err error) {
 	frame := NewFrame(class, channel, payload)
 	return fw.Writer.Write(frame)
 }
