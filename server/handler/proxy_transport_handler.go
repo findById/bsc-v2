@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"bsc-v2/core"
-	"bsc-v2/server/client"
-	"bsc-v2/server/site"
+	"github.com/findById/bsc-v2/core"
+	"github.com/findById/bsc-v2/server/client"
+	"github.com/findById/bsc-v2/server/site"
 	"encoding/base64"
 	"io"
 	"log"

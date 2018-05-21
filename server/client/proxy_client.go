@@ -1,7 +1,7 @@
 package client
 
 import (
-	"bsc-v2/core"
+	"github.com/findById/bsc-v2/core"
 	"net"
 	"sync"
 )

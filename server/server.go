@@ -1,10 +1,10 @@
 package main
 
 import (
-	"bsc-v2/core"
-	"bsc-v2/server/client"
-	"bsc-v2/server/handler"
-	"bsc-v2/server/site"
+	"github.com/findById/bsc-v2/core"
+	"github.com/findById/bsc-v2/server/client"
+	"github.com/findById/bsc-v2/server/handler"
+	"github.com/findById/bsc-v2/server/site"
 	"log"
 	"net"
 	"runtime"
