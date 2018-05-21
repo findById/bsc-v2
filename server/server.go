@@ -14,7 +14,7 @@ import (
 const CHANNEL_SIZE int = 100
 
 type ProxyServer struct {
-	cm       *client.ClientManager
+	cm       *client.ProxyClientManager
 	tcm      *site.ClientManager
 	listener *net.TCPListener
 	debug    bool

@@ -9,12 +9,12 @@ import (
 type TransportHandler struct {
 	pc    *client.ProxyClient   // 代理客户端
 	tc    *TcpClient            // 用户访问端
-	cm    *client.ClientManager // 客户端连接管理
+	cm    *client.ProxyClientManager // 客户端连接管理
 	tcm   *ClientManager        // 用户端连接管理
 	debug bool
 }
 
-func NewSiteHandler(pc *client.ProxyClient, cm *client.ClientManager, tc *TcpClient, tcm *ClientManager, debug bool) *TransportHandler {
+func NewSiteHandler(pc *client.ProxyClient, cm *client.ProxyClientManager, tc *TcpClient, tcm *ClientManager, debug bool) *TransportHandler {
 	return &TransportHandler{
 		pc:    pc,
 		cm:    cm,

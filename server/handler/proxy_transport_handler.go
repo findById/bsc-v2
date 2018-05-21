@@ -11,13 +11,13 @@ import (
 )
 
 type TransportHandler struct {
-	cm     *client.ClientManager
+	cm     *client.ProxyClientManager
 	client *client.ProxyClient
 	tcm    *site.ClientManager
 	debug  bool
 }
 
-func NewProxyHandler(conn *net.TCPConn, cm *client.ClientManager, tcm *site.ClientManager, debug bool) *TransportHandler {
+func NewProxyHandler(conn *net.TCPConn, cm *client.ProxyClientManager, tcm *site.ClientManager, debug bool) *TransportHandler {
 	client := client.NewProxyClient(conn)
 	return &TransportHandler{
 		cm:     cm,

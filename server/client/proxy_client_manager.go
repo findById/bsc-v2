@@ -2,20 +2,20 @@ package client
 
 import "sync"
 
-type ClientManager struct {
+type ProxyClientManager struct {
 	AuthToken string
 	ConnMap   map[string]*ProxyClient
 	Lock      sync.RWMutex
 }
 
-func NewClientManager() *ClientManager {
-	cm := &ClientManager{
+func NewClientManager() *ProxyClientManager {
+	cm := &ProxyClientManager{
 		ConnMap: make(map[string]*ProxyClient),
 	}
 	return cm
 }
 
-func (this *ClientManager) AddClient(client *ProxyClient) {
+func (this *ProxyClientManager) AddClient(client *ProxyClient) {
 	this.Lock.Lock()
 	// defer this.Lock.Unlock();
 	c, ok := this.ConnMap[client.Id]
@@ -27,7 +27,7 @@ func (this *ClientManager) AddClient(client *ProxyClient) {
 	this.Lock.Unlock()
 }
 
-func (this *ClientManager) RemoveClient(id string) {
+func (this *ProxyClientManager) RemoveClient(id string) {
 	this.Lock.Lock()
 	// defer this.Lock.Unlock();
 	c, ok := this.ConnMap[id]
@@ -38,17 +38,17 @@ func (this *ClientManager) RemoveClient(id string) {
 	this.Lock.Unlock()
 }
 
-func (this *ClientManager) GetClient(id string) *ProxyClient {
+func (this *ProxyClientManager) GetClient(id string) *ProxyClient {
 	this.Lock.RLock()
 	defer this.Lock.RUnlock()
 	return this.ConnMap[id]
 }
 
-func (this *ClientManager) Size() int {
+func (this *ProxyClientManager) Size() int {
 	return len(this.ConnMap)
 }
 
-func (this *ClientManager) CloneMap() []*ProxyClient {
+func (this *ProxyClientManager) CloneMap() []*ProxyClient {
 	this.Lock.RLock()
 	// defer this.Lock.RUnlock();
 	closedIds := make([]string, 0)
@@ -70,7 +70,7 @@ func (this *ClientManager) CloneMap() []*ProxyClient {
 	return clone
 }
 
-func (this *ClientManager) remove(ids []string) {
+func (this *ProxyClientManager) remove(ids []string) {
 	this.Lock.Lock()
 	for _, id := range ids {
 		c, ok := this.ConnMap[id]
